@@ -1,4 +1,4 @@
-# **Plugin Name** Plugin
+# **Discourse Kajabi Sso** Plugin
 
 **Plugin Summary**
 
