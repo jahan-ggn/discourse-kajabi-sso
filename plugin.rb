@@ -27,9 +27,7 @@ module ::KajabiSso
         params.require(:login)
         result = KajabiSso::Verifier.call(params[:login])
 
-        unless result[:success]
-          return render json: { success: false, error: result[:error] }
-        end
+        return render json: { success: false, error: result[:error] } unless result[:success]
       end
 
       super
@@ -37,6 +35,4 @@ module ::KajabiSso
   end
 end
 
-after_initialize do
-  UsersController.prepend(::KajabiSso::UsersControllerExtension)
-end
+after_initialize { UsersController.prepend(::KajabiSso::UsersControllerExtension) }

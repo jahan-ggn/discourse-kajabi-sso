@@ -6,6 +6,4 @@ KajabiSso::Engine.routes.draw do
   post "/webhook/membership" => "webhooks#membership"
 end
 
-Discourse::Application.routes.draw do
-  mount ::KajabiSso::Engine, at: "kajabi-sso"
-end
+Discourse::Application.routes.draw { mount ::KajabiSso::Engine, at: "kajabi-sso" }

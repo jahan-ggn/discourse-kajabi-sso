@@ -3,7 +3,7 @@
 module ::KajabiSso
   class Verifier
     MEMBERSHIP_CACHE_TTL = 5.minutes
-    CACHE_PREFIX         = "kajabi_sso:m"
+    CACHE_PREFIX = "kajabi_sso:m"
 
     def self.call(email)
       new(email).verify
@@ -23,9 +23,7 @@ module ::KajabiSso
       end
 
       existing_user = User.real.find_by_email(normalized)
-      if existing_user&.staff?
-        return { success: true, user: existing_user }
-      end
+      return { success: true, user: existing_user } if existing_user&.staff?
 
       cached = read_cache(normalized)
       if cached.present?
@@ -33,10 +31,8 @@ module ::KajabiSso
         return failure(SiteSetting.kajabi_sso_error_not_active)
       end
 
-      client = KajabiSso::ApiClient.new(
-        SiteSetting.kajabi_client_id,
-        SiteSetting.kajabi_client_secret
-      )
+      client =
+        KajabiSso::ApiClient.new(SiteSetting.kajabi_client_id, SiteSetting.kajabi_client_secret)
 
       result = client.active_member?(normalized)
 
@@ -63,7 +59,7 @@ module ::KajabiSso
       Rails.cache.write(
         "#{CACHE_PREFIX}:#{Digest::SHA256.hexdigest(email)}",
         { active: active, name: name },
-        expires_in: MEMBERSHIP_CACHE_TTL
+        expires_in: MEMBERSHIP_CACHE_TTL,
       )
     end
 
@@ -87,17 +83,18 @@ module ::KajabiSso
 
     def create_user(email, kajabi_name = nil)
       username = UserNameSuggester.suggest(kajabi_name.presence || email)
-      name     = kajabi_name.presence || email.split("@").first&.titleize || username
+      name = kajabi_name.presence || email.split("@").first&.titleize || username
 
-      user = User.new(
-        email:        email,
-        username:     username,
-        name:         name,
-        staged:       false,
-        active:       true,
-        approved:     true,
-        trust_level:  TrustLevel[0]
-      )
+      user =
+        User.new(
+          email: email,
+          username: username,
+          name: name,
+          staged: false,
+          active: true,
+          approved: true,
+          trust_level: TrustLevel[0],
+        )
 
       user.activate if user.save
       user

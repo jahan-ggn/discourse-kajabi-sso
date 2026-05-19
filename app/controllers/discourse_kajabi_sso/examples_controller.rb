@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module ::DiscourseKajabiSso
+module ::KajabiSso
   class ExamplesController < ::ApplicationController
     requires_plugin PLUGIN_NAME
 
