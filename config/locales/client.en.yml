@@ -3,7 +3,9 @@ en:
     admin:
       site_settings:
         categories:
-          discourse_kajabi_sso: "Discourse Kajabi Sso"
+          discourse_kajabi_sso: "Discourse Kajabi SSO"
   js:
     discourse_kajabi_sso:
-      placeholder: placeholder
+      title: Discourse Kajabi SSO
+      admin_navigation: Discourse Kajabi SSO
+

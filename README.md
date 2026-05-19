@@ -1,4 +1,4 @@
-# **Discourse Kajabi Sso** Plugin
+# **Discourse Kajabi SSO** Plugin
 
 **Plugin Summary**
 
