@@ -130,13 +130,13 @@ export default class KajabiLoginModal extends Component {
         {{#if this.sent}}
           <DButton
             class="btn-primary"
-            @label={{this.siteSettings.kajabi_sso_done_button}}
+            @translatedLabel={{this.siteSettings.kajabi_sso_done_button}}
             @action={{this.closeModal}}
           />
         {{else}}
           <DButton
             class="btn-primary"
-            @label={{this.siteSettings.kajabi_sso_button_text}}
+            @translatedLabel={{this.siteSettings.kajabi_sso_button_text}}
             @action={{this.sendLink}}
             @disabled={{not this.canSubmit}}
           />
