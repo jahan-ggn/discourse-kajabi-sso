@@ -31,12 +31,12 @@
     font-size: var(--font-up-1);
     flex-shrink: 0;
 
-    &.--success {
+    &--success {
       background: var(--success-low);
       color: var(--success);
     }
 
-    &.--error {
+    &--error {
       color: var(--danger);
     }
   }

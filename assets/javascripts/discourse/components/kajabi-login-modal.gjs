@@ -81,7 +81,7 @@ export default class KajabiLoginModal extends Component {
       <:body>
         {{#if this.sent}}
           <div class="kajabi-login-modal__success">
-            <span class="kajabi-login-modal__icon --success">
+            <span class="kajabi-login-modal__icon--success">
               {{dIcon "check"}}
             </span>
             <p class="kajabi-login-modal__success-text">
@@ -109,8 +109,12 @@ export default class KajabiLoginModal extends Component {
             </p>
 
             {{#if this.errorMessage}}
-              <div class="kajabi-login-modal__alert --error">
-                <span class="kajabi-login-modal__icon --error">
+              <div
+                class="kajabi-login-modal__alert kajabi-login-modal__alert--error"
+              >
+                <span
+                  class="kajabi-login-modal__icon kajabi-login-modal__icon--error"
+                >
                   {{dIcon "xmark"}}
                 </span>
                 <span class="kajabi-login-modal__alert-text">
@@ -126,13 +130,13 @@ export default class KajabiLoginModal extends Component {
         {{#if this.sent}}
           <DButton
             class="btn-primary"
-            @translatedLabel={{this.siteSettings.kajabi_sso_done_button}}
+            @label={{this.siteSettings.kajabi_sso_done_button}}
             @action={{this.closeModal}}
           />
         {{else}}
           <DButton
             class="btn-primary"
-            @translatedLabel={{this.siteSettings.kajabi_sso_button_text}}
+            @label={{this.siteSettings.kajabi_sso_button_text}}
             @action={{this.sendLink}}
             @disabled={{not this.canSubmit}}
           />
