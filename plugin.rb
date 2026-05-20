@@ -21,7 +21,13 @@ module ::KajabiSso
       if SiteSetting.kajabi_sso_enabled
         if SiteSetting.kajabi_client_id.blank? || SiteSetting.kajabi_client_secret.blank?
           Rails.logger.warn("[KajabiSSO] Credentials missing; skipping verification.")
-          return super
+          return(
+            render json: {
+                     success: false,
+                     error: I18n.t("kajabi_sso.misconfigured"),
+                   },
+                   status: :unprocessable_content
+          )
         end
 
         params.require(:login)

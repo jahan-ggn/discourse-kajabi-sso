@@ -12,3 +12,5 @@ en:
     kajabi_sso_done_button: "Done button text on success"
     kajabi_sso_error_generic: "Generic error message"
     kajabi_sso_error_not_active: "Error message when no active membership is found"
+  kajabi_sso:
+      misconfigured: "Kajabi SSO is not properly configured. Please contact the administrator."
