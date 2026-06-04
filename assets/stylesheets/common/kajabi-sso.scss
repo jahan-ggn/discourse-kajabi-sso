@@ -2,7 +2,6 @@
   &__form {
     display: flex;
     flex-direction: column;
-    gap: 0.75em;
   }
 
   &__label {
@@ -26,8 +25,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5em;
-    height: 1.5em;
+    width: 1.25em;
+    height: 1.25em;
     font-size: var(--font-up-1);
     flex-shrink: 0;
 
@@ -58,12 +57,12 @@
   &__alert {
     display: flex;
     align-items: center;
-    gap: 0.5em;
+    gap: 0.25em;
     color: var(--danger);
-    line-height: 1.4;
+    margin-top: 0.5em;
   }
 
   &__alert-text {
-    margin: 0;
+    margin-top: 0.125rem;
   }
 }

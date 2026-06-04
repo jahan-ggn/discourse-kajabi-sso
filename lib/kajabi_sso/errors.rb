@@ -9,7 +9,4 @@ module ::KajabiSso
 
   class UnavailableError < ApiError
   end
-
-  class ContactNotFound < ApiError
-  end
 end

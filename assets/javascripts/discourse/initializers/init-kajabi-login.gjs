@@ -14,7 +14,6 @@ export default apiInitializer((api) => {
     (Superclass) =>
       class extends Superclass {
         @service modal;
-        @service router;
 
         beforeModel(transition) {
           transition.abort();

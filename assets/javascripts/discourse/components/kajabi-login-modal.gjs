@@ -1,6 +1,5 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
-import { Input } from "@ember/component";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
@@ -22,7 +21,7 @@ export default class KajabiLoginModal extends Component {
   @tracked errorMessage = null;
 
   get canSubmit() {
-    return this.email?.trim()?.length > 0 && !this.loading;
+    return this.email.trim().length > 0 && !this.loading;
   }
 
   @action
@@ -43,9 +42,7 @@ export default class KajabiLoginModal extends Component {
     try {
       const result = await ajax("/u/email-login", {
         type: "POST",
-        data: {
-          login: this.email.trim(),
-        },
+        data: { login: this.email.trim() },
       });
 
       if (result.success === "OK" || result.success === true) {
@@ -55,10 +52,7 @@ export default class KajabiLoginModal extends Component {
           result.error || this.siteSettings.kajabi_sso_error_generic;
       }
     } catch (e) {
-      this.errorMessage =
-        e?.jqXHR?.responseJSON?.errors?.join(", ") ||
-        e?.jqXHR?.responseJSON?.error ||
-        this.siteSettings.kajabi_sso_error_generic;
+      this.errorMessage = this.#extractError(e);
     } finally {
       this.loading = false;
     }
@@ -70,6 +64,17 @@ export default class KajabiLoginModal extends Component {
     if (this.router.currentRouteName === "login") {
       this.router.transitionTo(`discovery.${defaultHomepage()}`);
     }
+  }
+
+  #extractError(error) {
+    const payload = error?.jqXHR?.responseJSON;
+    if (payload?.errors?.length) {
+      return payload.errors.join(", ");
+    }
+    if (payload?.error) {
+      return payload.error;
+    }
+    return this.siteSettings.kajabi_sso_error_generic;
   }
 
   <template>
@@ -94,11 +99,11 @@ export default class KajabiLoginModal extends Component {
               {{this.siteSettings.kajabi_sso_email_label}}
             </label>
 
-            <Input
+            <input
               id="kajabi-login-email"
               class="kajabi-login-modal__input"
-              @value={{this.email}}
-              @type="email"
+              type="email"
+              value={{this.email}}
               placeholder={{this.siteSettings.kajabi_sso_email_placeholder}}
               {{on "input" this.updateEmail}}
               disabled={{this.loading}}

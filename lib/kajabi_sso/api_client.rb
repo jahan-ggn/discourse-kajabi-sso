@@ -11,8 +11,13 @@ module ::KajabiSso
   class ApiClient
     KAJABI_AUTH_URL = "https://api.kajabi.com/v1/oauth/token"
     KAJABI_API_URL = "https://api.kajabi.com/v1"
-    TOKEN_CACHE_KEY = "kajabi_sso:token"
     API_TIMEOUT = 10.seconds
+
+    class << self
+      def instance
+        new(SiteSetting.kajabi_client_id, SiteSetting.kajabi_client_secret)
+      end
+    end
 
     def initialize(client_id, client_secret)
       @client_id = client_id
@@ -20,34 +25,30 @@ module ::KajabiSso
     end
 
     def active_member?(email)
-      return { active: false, name: nil, paid: false } if email.blank?
+      return inactive_result if email.blank?
 
       token = fetch_access_token
-
       contact = find_contact(token, email)
-      return { active: false, name: nil, paid: false } unless contact
+      return inactive_result unless contact
 
       customer_id = contact.dig("relationships", "customer", "data", "id")
-
       paid = customer_id.present? && has_active_purchase?(token, customer_id)
-
       name = contact.dig("attributes", "name")
 
       { active: true, name: name, paid: paid }
-    rescue ApiError => e
-      Rails.logger.error("[KajabiSSO] API: #{e.class} | #{mask_email(email)} | #{e.message}")
-
-      { active: false, name: nil, paid: false }
-    rescue StandardError => e
-      Rails.logger.error("[KajabiSSO] Unexpected: #{e.class} | #{mask_email(email)} | #{e.message}")
-
-      { active: false, name: nil, paid: false }
+    rescue UnauthorizedError, UnavailableError, ApiError => e
+      Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(email)} | #{e.message}")
+      inactive_result
     end
 
     private
 
+    def inactive_result
+      { active: false, name: nil, paid: false }
+    end
+
     def fetch_access_token
-      cached = Rails.cache.read(TOKEN_CACHE_KEY)
+      cached = Rails.cache.read(token_cache_key)
       return cached if cached.present?
 
       uri = URI(KAJABI_AUTH_URL)
@@ -65,13 +66,13 @@ module ::KajabiSso
 
       ttl = data["expires_in"].to_i
       ttl = 3600 if ttl <= 0
-      Rails.cache.write(TOKEN_CACHE_KEY, data["access_token"], expires_in: ttl - 60)
+      Rails.cache.write(token_cache_key, data["access_token"], expires_in: ttl - 60)
 
       data["access_token"]
     end
 
     def find_contact(token, email)
-      normalized_email = email.downcase.strip
+      normalized_email = Email.downcase(email)
       encoded_email = CGI.escape(normalized_email)
       uri = URI("#{KAJABI_API_URL}/contacts?filter[search]=#{encoded_email}")
 
@@ -85,10 +86,7 @@ module ::KajabiSso
       contacts = data["data"] || []
       return nil if contacts.empty?
 
-      contact = contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
-      raise ContactNotFound if contact.nil?
-
-      contact
+      contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
     end
 
     def has_active_purchase?(token, customer_id)
@@ -115,10 +113,12 @@ module ::KajabiSso
       http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 
       http.request(request)
-    rescue Net::OpenTimeout, Net::ReadTimeout
-      raise UnavailableError, "Kajabi timed out"
-    rescue SocketError, Errno::ECONNREFUSED
-      raise UnavailableError, "Kajabi is unreachable"
+    rescue Net::OpenTimeout
+      raise UnavailableError, "Kajabi connection timed out"
+    rescue Net::ReadTimeout
+      raise UnavailableError, "Kajabi read timed out"
+    rescue SocketError, Errno::ECONNREFUSED, Errno::ETIMEDOUT => e
+      raise UnavailableError, "Kajabi is unreachable (#{e.class})"
     end
 
     def parse_json(response)
@@ -138,6 +138,16 @@ module ::KajabiSso
       local, domain = email.split("@")
       return email if local.length <= 3
       "#{local[0, 3]}***@#{domain}"
+    end
+
+    def token_cache_key
+      db =
+        begin
+          RailsMultisite::ConnectionManagement.current_db
+        rescue StandardError
+          "default"
+        end
+      "#{db}:kajabi_sso:token"
     end
   end
 end

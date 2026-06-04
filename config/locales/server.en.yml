@@ -14,3 +14,4 @@ en:
     kajabi_sso_error_not_active: "Error message when no active membership is found"
   kajabi_sso:
       misconfigured: "Kajabi SSO is not properly configured. Please contact the administrator."
+      invalid_email: "Please enter a valid email address."
