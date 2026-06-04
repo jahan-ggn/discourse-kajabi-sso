@@ -1,5 +1,5 @@
-# **Discourse Kajabi SSO** Plugin
+# Discourse Kajabi SSO Plugin
 
 **Plugin Summary**
 
-For more information, please see: **url to meta topic**
+Kajabi membership verification and SSO for Discourse. Replaces the login flow with email-based Kajabi membership checks, provisions users automatically, and syncs them to Discourse groups based on their Kajabi offer purchases.

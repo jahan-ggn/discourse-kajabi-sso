@@ -8,10 +8,8 @@
   ],
   "compilerOptions": {
     "paths": {
-      "discourse/plugins/discourse-plugin-skeleton/*": [
-        "./assets/javascripts/*"
-      ],
-      "discourse/plugins/discourse-plugin-skeleton/admin/*": [
+      "discourse/plugins/discourse-kajabi-sso/*": ["./assets/javascripts/*"],
+      "discourse/plugins/discourse-kajabi-sso/admin/*": [
         "./admin/assets/javascripts/admin/*"
       ],
       "admin/*": ["./node_modules/discourse/declarations/admin/*"],

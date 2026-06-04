@@ -90,19 +90,33 @@ module ::KajabiSso
     end
 
     def has_active_purchase?(token, customer_id)
-      uri = URI("#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&page[size]=100")
+      url = "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&page[size]=100"
+      pages_fetched = 0
+      max_pages = 10
 
-      req = Net::HTTP::Get.new(uri)
-      req["Authorization"] = "Bearer #{token}"
-      req["Accept"] = "application/json"
+      while url.present? && pages_fetched < max_pages
+        uri = URI(url)
+        req = Net::HTTP::Get.new(uri)
+        req["Authorization"] = "Bearer #{token}"
+        req["Accept"] = "application/json"
 
-      res = perform_request(uri, req)
-      data = parse_json(res)
+        res = perform_request(uri, req)
+        data = parse_json(res)
 
-      purchases = data["data"] || []
-      return false if purchases.empty?
+        purchases = data["data"] || []
+        return true if purchases.any? { |p| p.dig("attributes", "deactivated_at").nil? }
 
-      purchases.any? { |purchase| purchase.dig("attributes", "deactivated_at").nil? }
+        url = data.dig("links", "next")
+        pages_fetched += 1
+      end
+
+      if pages_fetched >= max_pages && url.present?
+        Rails.logger.warn(
+          "[KajabiSSO] Purchase pagination hit max_pages for customer #{customer_id}",
+        )
+      end
+
+      false
     end
 
     def perform_request(uri, request)
