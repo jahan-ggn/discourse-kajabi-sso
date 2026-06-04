@@ -19,7 +19,9 @@ module KajabiSso
         Rails.logger.warn("[KajabiSSO] email_login result: #{result.to_h}")
 
         if result.failure?
-          return render json: { success: false, error: result.error }, status: :unprocessable_content
+          return(
+            render json: { success: false, error: result.error }, status: :unprocessable_content
+          )
         end
       end
 

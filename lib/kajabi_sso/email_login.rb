@@ -14,10 +14,8 @@ module KajabiSso
 
     def perform
       return failure(I18n.t("login.missing_user_field")) if @email.blank?
-      Rails.logger.warn("F ====> Checking Kajabi SSO for email: #{@email}")
 
       normalized = Email.downcase(@email.strip)
-      Rails.logger.warn("F ====> Normalized email: #{normalized}")
 
       unless normalized.match?(URI::MailTo::EMAIL_REGEXP)
         return failure(I18n.t("kajabi_sso.invalid_email"))
@@ -66,7 +64,12 @@ module KajabiSso
     end
 
     def cache_key(email)
-      db = RailsMultisite::ConnectionManagement.current_db rescue "default"
+      db =
+        begin
+          RailsMultisite::ConnectionManagement.current_db
+        rescue StandardError
+          "default"
+        end
       "#{db}:kajabi_sso:m:#{Digest::SHA256.hexdigest(email)}"
     end
 
@@ -92,15 +95,16 @@ module KajabiSso
       username = UserNameSuggester.suggest(kajabi_name.presence || email)
       name = kajabi_name.presence || email.split("@").first&.titleize || username
 
-      user = User.new(
-        email: email,
-        username: username,
-        name: name,
-        staged: false,
-        active: true,
-        approved: true,
-        trust_level: TrustLevel[0],
-      )
+      user =
+        User.new(
+          email: email,
+          username: username,
+          name: name,
+          staged: false,
+          active: true,
+          approved: true,
+          trust_level: TrustLevel[0],
+        )
 
       user.activate if user.save
       user
