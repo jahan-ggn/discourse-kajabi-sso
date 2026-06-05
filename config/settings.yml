@@ -10,31 +10,4 @@ plugins:
     default: ""
     client: false
     secret: true
-  kajabi_sso_modal_title:
-    default: "Log in"
-    client: true
-  kajabi_sso_email_label:
-    default: "Email"
-    client: true
-  kajabi_sso_email_placeholder:
-    default: "you@example.com"
-    client: true
-  kajabi_sso_help_text:
-    default: "Enter your Kajabi membership email and we'll send you a secure login link."
-    client: true
-  kajabi_sso_button_text:
-    default: "Email me a login link"
-    client: true
-  kajabi_sso_success_message:
-    default: "We've emailed you a login link. Please check your inbox."
-    client: true
-  kajabi_sso_done_button:
-    default: "Done"
-    client: true
-  kajabi_sso_error_generic:
-    default: "Something went wrong. Please try again."
-    client: true
-  kajabi_sso_error_not_active:
-    default: "No active Kajabi membership found."
-    client: false
 

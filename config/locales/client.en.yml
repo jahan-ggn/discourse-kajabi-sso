@@ -8,4 +8,13 @@ en:
     discourse_kajabi_sso:
       title: Discourse Kajabi SSO
       admin_navigation: Discourse Kajabi SSO
+      login_modal:
+        title: "Log in"
+        email_label: "Email"
+        email_placeholder: "you@example.com"
+        help_text: "Enter your Kajabi membership email and we'll send you a secure login link."
+        button_text: "Email me a login link"
+        success_message: "We've emailed you a login link. Please check your inbox."
+        done_button: "Done"
+        error_generic: "Something went wrong. Please try again."
 

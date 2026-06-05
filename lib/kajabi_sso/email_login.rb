@@ -27,7 +27,7 @@ module KajabiSso
       cached = read_cache(normalized)
       if cached.present?
         return process_user(normalized, cached[:name]) if cached[:active]
-        return failure(SiteSetting.kajabi_sso_error_not_active)
+        return failure(I18n.t("kajabi_sso.error_not_active"))
       end
 
       result = KajabiSso::ApiClient.instance.active_member?(normalized)
@@ -37,7 +37,7 @@ module KajabiSso
         process_user(normalized, result[:name])
       else
         write_cache(normalized, false)
-        failure(SiteSetting.kajabi_sso_error_not_active)
+        failure(I18n.t("kajabi_sso.error_not_active"))
       end
     end
 

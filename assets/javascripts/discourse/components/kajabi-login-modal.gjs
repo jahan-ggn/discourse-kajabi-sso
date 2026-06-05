@@ -10,10 +10,10 @@ import DButton from "discourse/ui-kit/d-button";
 import DModal from "discourse/ui-kit/d-modal";
 import DModalCancel from "discourse/ui-kit/d-modal-cancel";
 import dIcon from "discourse/ui-kit/helpers/d-icon";
+import { i18n } from "discourse-i18n";
 
 export default class KajabiLoginModal extends Component {
   @service router;
-  @service siteSettings;
 
   @tracked email = "";
   @tracked loading = false;
@@ -49,7 +49,8 @@ export default class KajabiLoginModal extends Component {
         this.sent = true;
       } else {
         this.errorMessage =
-          result.error || this.siteSettings.kajabi_sso_error_generic;
+          result.error ||
+          i18n.t("discourse_kajabi_sso.login_modal.error_generic");
       }
     } catch (e) {
       this.errorMessage = this.#extractError(e);
@@ -74,12 +75,12 @@ export default class KajabiLoginModal extends Component {
     if (payload?.error) {
       return payload.error;
     }
-    return this.siteSettings.kajabi_sso_error_generic;
+    return i18n.t("discourse_kajabi_sso.login_modal.error_generic");
   }
 
   <template>
     <DModal
-      @title={{this.siteSettings.kajabi_sso_modal_title}}
+      @title={{i18n "discourse_kajabi_sso.login_modal.title"}}
       @closeModal={{this.closeModal}}
       class="kajabi-login-modal"
     >
@@ -90,13 +91,13 @@ export default class KajabiLoginModal extends Component {
               {{dIcon "check"}}
             </span>
             <p class="kajabi-login-modal__success-text">
-              {{this.siteSettings.kajabi_sso_success_message}}
+              {{i18n "discourse_kajabi_sso.login_modal.success_message"}}
             </p>
           </div>
         {{else}}
           <div class="kajabi-login-modal__form">
             <label for="kajabi-login-email" class="kajabi-login-modal__label">
-              {{this.siteSettings.kajabi_sso_email_label}}
+              {{i18n "discourse_kajabi_sso.login_modal.email_label"}}
             </label>
 
             <input
@@ -104,13 +105,15 @@ export default class KajabiLoginModal extends Component {
               class="kajabi-login-modal__input"
               type="email"
               value={{this.email}}
-              placeholder={{this.siteSettings.kajabi_sso_email_placeholder}}
+              placeholder={{i18n
+                "discourse_kajabi_sso.login_modal.email_placeholder"
+              }}
               {{on "input" this.updateEmail}}
               disabled={{this.loading}}
             />
 
             <p class="kajabi-login-modal__help">
-              {{this.siteSettings.kajabi_sso_help_text}}
+              {{i18n "discourse_kajabi_sso.login_modal.help_text"}}
             </p>
 
             {{#if this.errorMessage}}
@@ -135,13 +138,17 @@ export default class KajabiLoginModal extends Component {
         {{#if this.sent}}
           <DButton
             class="btn-primary"
-            @translatedLabel={{this.siteSettings.kajabi_sso_done_button}}
+            @translatedLabel={{i18n
+              "discourse_kajabi_sso.login_modal.done_button"
+            }}
             @action={{this.closeModal}}
           />
         {{else}}
           <DButton
             class="btn-primary"
-            @translatedLabel={{this.siteSettings.kajabi_sso_button_text}}
+            @translatedLabel={{i18n
+              "discourse_kajabi_sso.login_modal.button_text"
+            }}
             @action={{this.sendLink}}
             @disabled={{not this.canSubmit}}
           />
