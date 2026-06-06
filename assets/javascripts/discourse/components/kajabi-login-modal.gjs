@@ -50,7 +50,7 @@ export default class KajabiLoginModal extends Component {
       } else {
         this.errorMessage =
           result.error ||
-          i18n.t("discourse_kajabi_sso.login_modal.error_generic");
+          i18n("discourse_kajabi_sso.login_modal.error_generic");
       }
     } catch (e) {
       this.errorMessage = this.#extractError(e);
@@ -75,7 +75,7 @@ export default class KajabiLoginModal extends Component {
     if (payload?.error) {
       return payload.error;
     }
-    return i18n.t("discourse_kajabi_sso.login_modal.error_generic");
+    return i18n("discourse_kajabi_sso.login_modal.error_generic");
   }
 
   <template>

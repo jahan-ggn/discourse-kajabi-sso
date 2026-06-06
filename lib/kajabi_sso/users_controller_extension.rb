@@ -3,7 +3,7 @@
 module KajabiSso
   module UsersControllerExtension
     def email_login
-      if KajabiSso::Configuration.enabled?
+      if KajabiSso::Configuration.enabled? && request.post? && params[:login].present?
         unless KajabiSso::Configuration.valid_credentials?
           return(
             render json: {
@@ -14,9 +14,7 @@ module KajabiSso
           )
         end
 
-        params.require(:login)
         result = KajabiSso::EmailLogin.perform(params[:login])
-        Rails.logger.warn("[KajabiSSO] email_login result: #{result.to_h}")
 
         if result.failure?
           return(

@@ -25,26 +25,38 @@ module ::KajabiSso
     end
 
     def active_member?(email)
-      return inactive_result if email.blank?
+      return no_contact_result if email.blank?
 
       token = fetch_access_token
       contact = find_contact(token, email)
-      return inactive_result unless contact
+      return no_contact_result unless contact
 
+      contact_id = contact.dig("id")
       customer_id = contact.dig("relationships", "customer", "data", "id")
-      paid = customer_id.present? && has_active_purchase?(token, customer_id)
       name = contact.dig("attributes", "name")
 
-      { active: true, name: name, paid: paid }
+      if customer_id.present?
+        offer_ids = active_offer_ids(token, contact_id, customer_id)
+      else
+        offer_ids = []
+      end
+
+      { contact_found: true, name: name, offer_ids: offer_ids }
     rescue UnauthorizedError, UnavailableError, ApiError => e
       Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(email)} | #{e.message}")
-      inactive_result
+      no_contact_result
+    end
+
+    def active_offer_ids(token, contact_id, customer_id)
+      purchase_ids = fetch_purchase_offer_ids(token, customer_id)
+      granted_ids = fetch_granted_offer_ids(token, contact_id)
+      (purchase_ids + granted_ids).uniq
     end
 
     private
 
-    def inactive_result
-      { active: false, name: nil, paid: false }
+    def no_contact_result
+      { contact_found: false, name: nil, offer_ids: [] }
     end
 
     def fetch_access_token
@@ -87,36 +99,6 @@ module ::KajabiSso
       return nil if contacts.empty?
 
       contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
-    end
-
-    def has_active_purchase?(token, customer_id)
-      url = "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&page[size]=100"
-      pages_fetched = 0
-      max_pages = 10
-
-      while url.present? && pages_fetched < max_pages
-        uri = URI(url)
-        req = Net::HTTP::Get.new(uri)
-        req["Authorization"] = "Bearer #{token}"
-        req["Accept"] = "application/json"
-
-        res = perform_request(uri, req)
-        data = parse_json(res)
-
-        purchases = data["data"] || []
-        return true if purchases.any? { |p| p.dig("attributes", "deactivated_at").nil? }
-
-        url = data.dig("links", "next")
-        pages_fetched += 1
-      end
-
-      if pages_fetched >= max_pages && url.present?
-        Rails.logger.warn(
-          "[KajabiSSO] Purchase pagination hit max_pages for customer #{customer_id}",
-        )
-      end
-
-      false
     end
 
     def perform_request(uri, request)
@@ -162,6 +144,52 @@ module ::KajabiSso
           "default"
         end
       "#{db}:kajabi_sso:token"
+    end
+
+    def fetch_purchase_offer_ids(token, customer_id)
+      ids = []
+      url =
+        "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&filter[active]=true&page[size]=100"
+      pages_fetched = 0
+      max_pages = 10
+
+      while url.present? && pages_fetched < max_pages
+        uri = URI(url)
+        req = Net::HTTP::Get.new(uri)
+        req["Authorization"] = "Bearer #{token}"
+        req["Accept"] = "application/json"
+
+        res = perform_request(uri, req)
+        data = parse_json(res)
+
+        (data["data"] || []).each do |p|
+          offer_id = p.dig("relationships", "offer", "data", "id")
+          ids << offer_id if offer_id.present?
+        end
+
+        url = data.dig("links", "next")
+        pages_fetched += 1
+      end
+
+      if pages_fetched >= max_pages && url.present?
+      end
+
+      ids
+    end
+
+    def fetch_granted_offer_ids(token, contact_id)
+      uri = URI("#{KAJABI_API_URL}/contacts/#{contact_id}/relationships/offers")
+      req = Net::HTTP::Get.new(uri)
+      req["Authorization"] = "Bearer #{token}"
+      req["Accept"] = "application/json"
+
+      res = perform_request(uri, req)
+      data = parse_json(res)
+
+      (data["data"] || []).filter_map { |o| o.dig("id") }
+    rescue ApiError => e
+      Rails.logger.warn("[KajabiSSO] Granted offers fetch failed: #{e.message}")
+      []
     end
   end
 end

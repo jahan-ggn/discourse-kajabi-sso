@@ -2,7 +2,7 @@
 
 module KajabiSso
   class EmailLogin
-    MEMBERSHIP_CACHE_TTL = 5.minutes
+    MEMBERSHIP_CACHE_TTL = 30.seconds
 
     def self.perform(email)
       new(email).perform
@@ -16,9 +16,22 @@ module KajabiSso
       return failure(I18n.t("login.missing_user_field")) if @email.blank?
 
       normalized = Email.downcase(@email.strip)
-
       unless normalized.match?(URI::MailTo::EMAIL_REGEXP)
         return failure(I18n.t("kajabi_sso.invalid_email"))
+      end
+
+      if KajabiSso::Configuration.bypass?(normalized)
+        user = User.real.find_by_email(normalized)
+        if user.nil?
+          user = provision_user(normalized, nil)
+          return failure(user.errors.full_messages.join("\n")) unless user.persisted?
+        end
+        user.unstage! if user.staged?
+        unless user.active
+          user.update!(active: true)
+          user.email_tokens.update_all(confirmed: true)
+        end
+        return success(user)
       end
 
       existing_user = User.real.find_by_email(normalized)
@@ -26,22 +39,34 @@ module KajabiSso
 
       cached = read_cache(normalized)
       if cached.present?
-        return process_user(normalized, cached[:name]) if cached[:active]
-        return failure(I18n.t("kajabi_sso.error_not_active"))
+        return handle_result(normalized, cached[:name], cached[:offer_ids], cached[:contact_found])
       end
 
       result = KajabiSso::ApiClient.instance.active_member?(normalized)
-
-      if result[:active]
-        write_cache(normalized, true, result[:name])
-        process_user(normalized, result[:name])
-      else
-        write_cache(normalized, false)
-        failure(I18n.t("kajabi_sso.error_not_active"))
-      end
+      write_cache(normalized, result[:contact_found], result[:name], result[:offer_ids])
+      handle_result(normalized, result[:name], result[:offer_ids], result[:contact_found])
     end
 
     private
+
+    def handle_result(email, name, offer_ids, contact_found)
+      return failure(I18n.t("kajabi_sso.error_not_active")) unless contact_found
+
+      user = User.real.find_by_email(email)
+      if user.nil?
+        user = provision_user(email, name)
+        return failure(user.errors.full_messages.join("\n")) unless user.persisted?
+      end
+
+      user.unstage! if user.staged?
+      unless user.active
+        user.update!(active: true)
+        user.email_tokens.update_all(confirmed: true)
+      end
+
+      KajabiSso::GroupSyncService.sync(user, offer_ids)
+      success(user)
+    end
 
     def success(user)
       Result.new(success: true, user: user)
@@ -55,10 +80,10 @@ module KajabiSso
       Rails.cache.read(cache_key(email))
     end
 
-    def write_cache(email, active, name = nil)
+    def write_cache(email, contact_found, name = nil, offer_ids = nil)
       Rails.cache.write(
         cache_key(email),
-        { active: active, name: name },
+        { contact_found: contact_found, name: name, offer_ids: offer_ids },
         expires_in: MEMBERSHIP_CACHE_TTL,
       )
     end
@@ -71,24 +96,6 @@ module KajabiSso
           "default"
         end
       "#{db}:kajabi_sso:m:#{Digest::SHA256.hexdigest(email)}"
-    end
-
-    def process_user(email, kajabi_name = nil)
-      user = User.real.find_by_email(email)
-
-      if user.nil?
-        user = provision_user(email, kajabi_name)
-        return failure(user.errors.full_messages.join("\n")) unless user.persisted?
-      end
-
-      user.unstage! if user.staged?
-
-      unless user.active
-        user.update!(active: true)
-        user.email_tokens.update_all(confirmed: true)
-      end
-
-      success(user)
     end
 
     def provision_user(email, kajabi_name = nil)

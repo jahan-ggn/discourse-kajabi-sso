@@ -21,4 +21,16 @@ export default apiInitializer((api) => {
         }
       }
   );
+
+  api.modifyClass(
+    "route:signup",
+    (Superclass) =>
+      class extends Superclass {
+        beforeModel(transition) {
+          transition.abort();
+          const url = siteSettings.kajabi_signup_redirect_url;
+          window.location.href = url || "#";
+        }
+      }
+  );
 });

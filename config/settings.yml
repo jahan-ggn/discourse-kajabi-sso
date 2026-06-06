@@ -10,4 +10,22 @@ plugins:
     default: ""
     client: false
     secret: true
+  kajabi_offer_group_mapping:
+    default: ""
+    type: list
+    client: false
+  kajabi_webhook_secret:
+    default: ""
+    secret: true
+    area: "authenticators"
+    hidden: true
+  kajabi_signup_redirect_url:
+    default: ""
+    client: true
+  kajabi_bypass_domains:
+    default: "sourdoughgeeks.com"
+    type: list
+    client: false
+
+
 
