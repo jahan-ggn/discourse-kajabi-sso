@@ -85,7 +85,12 @@ export default class KajabiLoginModal extends Component {
       class="kajabi-login-modal"
     >
       <:body>
-        {{#if this.sent}}
+        {{#if this.loading}}
+          <div class="kajabi-login-modal__loading">
+            {{dIcon "spinner" class="loading-spinner"}}
+            <span>{{i18n "discourse_kajabi_sso.login_modal.loading"}}</span>
+          </div>
+        {{else if this.sent}}
           <div class="kajabi-login-modal__success">
             <span class="kajabi-login-modal__icon--success">
               {{dIcon "check"}}

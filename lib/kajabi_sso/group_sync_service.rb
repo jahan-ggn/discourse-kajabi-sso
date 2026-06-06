@@ -8,38 +8,26 @@ module KajabiSso
 
     def initialize(user, offer_ids)
       @user = user
-      @offer_ids = offer_ids
+      @offer_ids = Array(offer_ids).map(&:to_s)
     end
 
     def sync
       return if @user.blank? || @user.staged?
 
-      target_groups = mapper.groups_for(@offer_ids)
-      managed = managed_group_names
-      current = current_managed_groups(managed)
+      target_names = Mappings.group_names_for(@offer_ids)
+      managed_names = Mappings.managed_group_names
+      current_names = @user.groups.where(name: managed_names).pluck(:name)
 
-      to_add = target_groups - current
-      to_remove = current - target_groups
+      to_add = target_names - current_names
+      to_remove = current_names - target_names
 
       to_add.each { |name| add_to_group(name) }
       to_remove.each { |name| remove_from_group(name) }
 
-      log_sync(to_add, to_remove)
+      log_sync(to_add, to_remove) if to_add.any? || to_remove.any?
     end
 
     private
-
-    def mapper
-      @mapper ||= KajabiSso::OfferGroupMapper.new
-    end
-
-    def managed_group_names
-      mapper.mapping.values.uniq
-    end
-
-    def current_managed_groups(managed)
-      @user.groups.where(name: managed).pluck(:name)
-    end
 
     def add_to_group(name)
       group = Group.find_by_name(name)
@@ -56,8 +44,9 @@ module KajabiSso
     end
 
     def log_sync(added, removed)
-      if added.any? || removed.any?
-      end
+      Rails.logger.info(
+        "[KajabiSSO] GroupSync user=#{@user.id} +[#{added.join(",")}] -[#{removed.join(",")}]",
+      )
     end
   end
 end

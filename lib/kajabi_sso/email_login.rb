@@ -20,19 +20,7 @@ module KajabiSso
         return failure(I18n.t("kajabi_sso.invalid_email"))
       end
 
-      if KajabiSso::Configuration.bypass?(normalized)
-        user = User.real.find_by_email(normalized)
-        if user.nil?
-          user = provision_user(normalized, nil)
-          return failure(user.errors.full_messages.join("\n")) unless user.persisted?
-        end
-        user.unstage! if user.staged?
-        unless user.active
-          user.update!(active: true)
-          user.email_tokens.update_all(confirmed: true)
-        end
-        return success(user)
-      end
+      return handle_bypass(normalized) if Configuration.bypass?(normalized)
 
       existing_user = User.real.find_by_email(normalized)
       return success(existing_user) if existing_user&.staff?
@@ -42,29 +30,31 @@ module KajabiSso
         return handle_result(normalized, cached[:name], cached[:offer_ids], cached[:contact_found])
       end
 
-      result = KajabiSso::ApiClient.instance.active_member?(normalized)
+      result = ApiClient.instance.active_member?(normalized)
       write_cache(normalized, result[:contact_found], result[:name], result[:offer_ids])
       handle_result(normalized, result[:name], result[:offer_ids], result[:contact_found])
     end
 
     private
 
+    def handle_bypass(email)
+      user = User.real.find_by_email(email) || UserProvisioner.provision(email)
+      return failure(user.errors.full_messages.join("\n")) unless user.persisted?
+
+      UserActivator.activate!(user)
+      UserTracker.track!(user)
+      success(user)
+    end
+
     def handle_result(email, name, offer_ids, contact_found)
       return failure(I18n.t("kajabi_sso.error_not_active")) unless contact_found
 
-      user = User.real.find_by_email(email)
-      if user.nil?
-        user = provision_user(email, name)
-        return failure(user.errors.full_messages.join("\n")) unless user.persisted?
-      end
+      user = User.real.find_by_email(email) || UserProvisioner.provision(email, name: name)
+      return failure(user.errors.full_messages.join("\n")) unless user.persisted?
 
-      user.unstage! if user.staged?
-      unless user.active
-        user.update!(active: true)
-        user.email_tokens.update_all(confirmed: true)
-      end
-
-      KajabiSso::GroupSyncService.sync(user, offer_ids)
+      UserActivator.activate!(user)
+      GroupSyncService.sync(user, offer_ids)
+      UserTracker.track!(user)
       success(user)
     end
 
@@ -96,25 +86,6 @@ module KajabiSso
           "default"
         end
       "#{db}:kajabi_sso:m:#{Digest::SHA256.hexdigest(email)}"
-    end
-
-    def provision_user(email, kajabi_name = nil)
-      username = UserNameSuggester.suggest(kajabi_name.presence || email)
-      name = kajabi_name.presence || email.split("@").first&.titleize || username
-
-      user =
-        User.new(
-          email: email,
-          username: username,
-          name: name,
-          staged: false,
-          active: true,
-          approved: true,
-          trust_level: TrustLevel[0],
-        )
-
-      user.activate if user.save
-      user
     end
   end
 end

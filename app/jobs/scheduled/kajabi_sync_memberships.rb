@@ -2,29 +2,42 @@
 
 module Jobs
   class KajabiSyncMemberships < ::Jobs::Scheduled
-    every 10.minutes
+    every 6.hours
 
     def execute(args)
-      return unless KajabiSso::Configuration.enabled? && KajabiSso::Configuration.valid_credentials?
+      return unless should_run?
 
-      managed_groups = KajabiSso::OfferGroupMapper.new.mapping.values.uniq
-      return if managed_groups.blank?
+      managed_group_ids = KajabiSso::Mappings.managed_group_ids
+      return if managed_group_ids.blank?
 
-      group_ids = Group.where(name: managed_groups).pluck(:id)
-      return if group_ids.blank?
-
-      User.real.not_suspended
-        .joins(:group_users)
-        .where(group_users: { group_id: group_ids })
-        .distinct
-        .find_each do |user|
+      users_to_sync(managed_group_ids).find_each do |user|
         begin
-          result = KajabiSso::ApiClient.instance.active_member?(user.email)
-          KajabiSso::GroupSyncService.sync(user, result[:offer_ids])
-        rescue => e
+          sync_user(user)
+        rescue StandardError => e
           Rails.logger.warn("[KajabiSSO] Scheduled sync failed for #{user.email}: #{e.message}")
         end
       end
+    end
+
+    private
+
+    def should_run?
+      KajabiSso::Configuration.enabled? && KajabiSso::Configuration.valid_credentials?
+    end
+
+    def users_to_sync(group_ids)
+      group_user_ids = GroupUser.where(group_id: group_ids).distinct.pluck(:user_id)
+      custom_field_user_ids = UserCustomField.where(name: "kajabi_sso").distinct.pluck(:user_id)
+
+      all_ids = (group_user_ids + custom_field_user_ids).uniq
+      return User.none if all_ids.empty?
+
+      User.real.not_suspended.where(id: all_ids)
+    end
+
+    def sync_user(user)
+      result = KajabiSso::ApiClient.instance.active_member?(user.email)
+      KajabiSso::GroupSyncService.sync(user, result[:offer_ids])
     end
   end
 end

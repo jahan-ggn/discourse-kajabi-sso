@@ -5,13 +5,13 @@ require "json"
 require "uri"
 require "openssl"
 require "cgi"
-require_relative "errors"
 
 module ::KajabiSso
   class ApiClient
     KAJABI_AUTH_URL = "https://api.kajabi.com/v1/oauth/token"
     KAJABI_API_URL = "https://api.kajabi.com/v1"
     API_TIMEOUT = 10.seconds
+    MAX_PAGES = 10
 
     class << self
       def instance
@@ -35,11 +35,7 @@ module ::KajabiSso
       customer_id = contact.dig("relationships", "customer", "data", "id")
       name = contact.dig("attributes", "name")
 
-      if customer_id.present?
-        offer_ids = active_offer_ids(token, contact_id, customer_id)
-      else
-        offer_ids = []
-      end
+      offer_ids = customer_id.present? ? active_offer_ids(token, contact_id, customer_id) : []
 
       { contact_found: true, name: name, offer_ids: offer_ids }
     rescue UnauthorizedError, UnavailableError, ApiError => e
@@ -71,16 +67,15 @@ module ::KajabiSso
         client_secret: @client_secret,
       )
 
-      res = perform_request(uri, req)
-      data = parse_json(res)
-
-      raise UnauthorizedError, "Bad credentials: #{data.inspect}" unless data["access_token"]
+      data = request_json(uri, req)
+      token = data["access_token"]
+      raise UnauthorizedError, "Bad credentials: #{data.inspect}" unless token
 
       ttl = data["expires_in"].to_i
       ttl = 3600 if ttl <= 0
-      Rails.cache.write(token_cache_key, data["access_token"], expires_in: ttl - 60)
+      Rails.cache.write(token_cache_key, token, expires_in: ttl - 60)
 
-      data["access_token"]
+      token
     end
 
     def find_contact(token, email)
@@ -88,17 +83,51 @@ module ::KajabiSso
       encoded_email = CGI.escape(normalized_email)
       uri = URI("#{KAJABI_API_URL}/contacts?filter[search]=#{encoded_email}")
 
-      req = Net::HTTP::Get.new(uri)
-      req["Authorization"] = "Bearer #{token}"
-      req["Accept"] = "application/json"
-
-      res = perform_request(uri, req)
-      data = parse_json(res)
-
+      data = authorized_json_request(uri, token)
       contacts = data["data"] || []
       return nil if contacts.empty?
 
       contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
+    end
+
+    def fetch_purchase_offer_ids(token, customer_id)
+      ids = []
+      url =
+        "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&filter[active]=true&page[size]=100"
+      pages_fetched = 0
+
+      while url.present? && pages_fetched < MAX_PAGES
+        data = authorized_json_request(URI(url), token)
+        (data["data"] || []).each do |p|
+          offer_id = p.dig("relationships", "offer", "data", "id")
+          ids << offer_id if offer_id.present?
+        end
+        url = data.dig("links", "next")
+        pages_fetched += 1
+      end
+
+      ids
+    end
+
+    def fetch_granted_offer_ids(token, contact_id)
+      uri = URI("#{KAJABI_API_URL}/contacts/#{contact_id}/relationships/offers")
+      data = authorized_json_request(uri, token)
+      (data["data"] || []).filter_map { |o| o.dig("id") }
+    rescue ApiError => e
+      Rails.logger.warn("[KajabiSSO] Granted offers fetch failed: #{e.message}")
+      []
+    end
+
+    def authorized_json_request(uri, token)
+      req = Net::HTTP::Get.new(uri)
+      req["Authorization"] = "Bearer #{token}"
+      req["Accept"] = "application/json"
+      request_json(uri, req)
+    end
+
+    def request_json(uri, request)
+      res = perform_request(uri, request)
+      parse_json(res)
     end
 
     def perform_request(uri, request)
@@ -144,52 +173,6 @@ module ::KajabiSso
           "default"
         end
       "#{db}:kajabi_sso:token"
-    end
-
-    def fetch_purchase_offer_ids(token, customer_id)
-      ids = []
-      url =
-        "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&filter[active]=true&page[size]=100"
-      pages_fetched = 0
-      max_pages = 10
-
-      while url.present? && pages_fetched < max_pages
-        uri = URI(url)
-        req = Net::HTTP::Get.new(uri)
-        req["Authorization"] = "Bearer #{token}"
-        req["Accept"] = "application/json"
-
-        res = perform_request(uri, req)
-        data = parse_json(res)
-
-        (data["data"] || []).each do |p|
-          offer_id = p.dig("relationships", "offer", "data", "id")
-          ids << offer_id if offer_id.present?
-        end
-
-        url = data.dig("links", "next")
-        pages_fetched += 1
-      end
-
-      if pages_fetched >= max_pages && url.present?
-      end
-
-      ids
-    end
-
-    def fetch_granted_offer_ids(token, contact_id)
-      uri = URI("#{KAJABI_API_URL}/contacts/#{contact_id}/relationships/offers")
-      req = Net::HTTP::Get.new(uri)
-      req["Authorization"] = "Bearer #{token}"
-      req["Accept"] = "application/json"
-
-      res = perform_request(uri, req)
-      data = parse_json(res)
-
-      (data["data"] || []).filter_map { |o| o.dig("id") }
-    rescue ApiError => e
-      Rails.logger.warn("[KajabiSSO] Granted offers fetch failed: #{e.message}")
-      []
     end
   end
 end

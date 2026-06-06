@@ -45,38 +45,16 @@ module KajabiSso
       return bad_request("missing email") if email.blank?
       return bad_request("missing offer_id") if offer_id.blank?
 
-      user = User.find_by_email(email)
+      user = User.find_by_email(email) || UserProvisioner.provision(email, name: name)
+      return render_error(user) unless user.persisted?
 
-      if user.nil?
-        user = provision_user(email, name)
-        return render_error(user) unless user.persisted?
-      end
+      UserActivator.activate!(user)
 
-      result = KajabiSso::ApiClient.instance.active_member?(email)
-      offer_ids = (result[:offer_ids] || []) | [offer_id]
-
-      KajabiSso::GroupSyncService.sync(user, offer_ids)
+      offer_ids = Array(ApiClient.instance.active_member?(email)[:offer_ids]) | [offer_id]
+      GroupSyncService.sync(user, offer_ids)
+      UserTracker.track!(user)
 
       render json: { status: "synced" }, status: :ok
-    end
-
-    def provision_user(email, name)
-      username = UserNameSuggester.suggest(name.presence || email)
-      display_name = name.presence || email.split("@").first&.titleize || username
-
-      user =
-        User.new(
-          email: email,
-          username: username,
-          name: display_name,
-          staged: false,
-          active: true,
-          approved: true,
-          trust_level: TrustLevel[0],
-        )
-
-      user.activate if user.save
-      user
     end
 
     def valid_secret?

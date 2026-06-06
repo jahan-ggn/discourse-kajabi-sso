@@ -17,4 +17,5 @@ en:
         success_message: "We've emailed you a login link. Please check your inbox."
         done_button: "Done"
         error_generic: "Something went wrong. Please try again."
+        loading: "Checking your membership…"
 
