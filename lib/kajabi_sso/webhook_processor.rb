@@ -16,18 +16,11 @@ module KajabiSso
       name = extract_name
 
       return Result.new(success: false, error: "missing email") if email.blank?
-      if offer_id.blank?
-        return Result.new(success: false, error: "missing offer_id")
-      end
+      return Result.new(success: false, error: "missing offer_id") if offer_id.blank?
 
       user = find_or_provision_user(email, name)
       unless user.persisted?
-        return(
-          Result.new(
-            success: false,
-            error: user.errors.full_messages.join(", ")
-          )
-        )
+        return(Result.new(success: false, error: user.errors.full_messages.join(", ")))
       end
 
       UserActivator.activate!(user)

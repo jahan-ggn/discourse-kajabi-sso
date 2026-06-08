@@ -47,9 +47,7 @@ module KajabiSso
 
       { contact_found: true, name: name, offer_ids: offer_ids }
     rescue UnauthorizedError, UnavailableError, ApiError => e
-      Rails.logger.warn(
-        "[KajabiSSO] API error: #{e.class} | #{mask_email(@email)} | #{e.message}"
-      )
+      Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(@email)} | #{e.message}")
       no_contact_result
     end
 
@@ -67,9 +65,9 @@ module KajabiSso
         {
           contact_found: result[:contact_found],
           name: result[:name],
-          offer_ids: result[:offer_ids]
+          offer_ids: result[:offer_ids],
         },
-        expires_in: MEMBERSHIP_CACHE_TTL
+        expires_in: MEMBERSHIP_CACHE_TTL,
       )
     end
 

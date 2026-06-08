@@ -33,7 +33,7 @@ module ::KajabiSso
       req.set_form_data(
         grant_type: "client_credentials",
         client_id: @client_id,
-        client_secret: @client_secret
+        client_secret: @client_secret,
       )
 
       data = request_json(uri, req)
@@ -56,9 +56,7 @@ module ::KajabiSso
       contacts = data["data"] || []
       return nil if contacts.empty?
 
-      contacts.find do |c|
-        c.dig("attributes", "email")&.downcase == normalized_email
-      end
+      contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
     end
 
     def active_purchase_offer_ids(token, customer_id)

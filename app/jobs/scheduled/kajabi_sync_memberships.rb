@@ -10,13 +10,15 @@ module Jobs
       managed_group_ids = KajabiSso::Mappings.managed_group_ids
       return if managed_group_ids.blank?
 
-      KajabiSso::UsersQuery.to_sync(managed_group_ids).find_each do |user|
-        begin
-          sync_user(user)
-        rescue StandardError => e
-          Rails.logger.warn("[KajabiSSO] Scheduled sync failed for #{user.email}: #{e.message}")
+      KajabiSso::UsersQuery
+        .to_sync(managed_group_ids)
+        .find_each do |user|
+          begin
+            sync_user(user)
+          rescue StandardError => e
+            Rails.logger.warn("[KajabiSSO] Scheduled sync failed for #{user.email}: #{e.message}")
+          end
         end
-      end
     end
 
     private

@@ -22,10 +22,8 @@ module KajabiSso
     private
 
     def fetch_user_ids
-      group_user_ids =
-        GroupUser.where(group_id: @group_ids).distinct.pluck(:user_id)
-      custom_field_user_ids =
-        UserCustomField.where(name: "kajabi_sso").distinct.pluck(:user_id)
+      group_user_ids = GroupUser.where(group_id: @group_ids).distinct.pluck(:user_id)
+      custom_field_user_ids = UserCustomField.where(name: "kajabi_sso").distinct.pluck(:user_id)
 
       (group_user_ids + custom_field_user_ids).uniq
     end

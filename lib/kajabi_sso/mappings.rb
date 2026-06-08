@@ -62,9 +62,7 @@ module KajabiSso
         entries.each do |offer_id, group_name|
           group = groups_by_name[group_name]
           unless group
-            Rails.logger.warn(
-              "[KajabiSSO] Mapped group '#{group_name}' not found; skipping."
-            )
+            Rails.logger.warn("[KajabiSSO] Mapped group '#{group_name}' not found; skipping.")
             next
           end
 

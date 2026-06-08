@@ -35,11 +35,8 @@ module KajabiSso
 
       MessageBus.publish(
         "/user/#{@user.id}",
-        {
-          type: "refresh_groups",
-          groups: @user.groups.map { |g| { id: g.id, name: g.name } }
-        },
-        user_ids: [@user.id]
+        { type: "refresh_groups", groups: @user.groups.map { |g| { id: g.id, name: g.name } } },
+        user_ids: [@user.id],
       )
     end
 
@@ -59,7 +56,7 @@ module KajabiSso
 
     def log_sync(added, removed)
       Rails.logger.info(
-        "[KajabiSSO] GroupSync user=#{@user.id} +[#{added.join(",")}] -[#{removed.join(",")}]"
+        "[KajabiSSO] GroupSync user=#{@user.id} +[#{added.join(",")}] -[#{removed.join(",")}]",
       )
     end
   end

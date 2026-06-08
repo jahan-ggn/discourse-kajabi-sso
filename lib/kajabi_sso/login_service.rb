@@ -24,14 +24,10 @@ module KajabiSso
       return success(existing_user) if existing_user&.staff?
 
       result = MembershipResolver.resolve(normalized)
-      unless result[:contact_found]
-        return failure(I18n.t("kajabi_sso.error_not_active"))
-      end
+      return failure(I18n.t("kajabi_sso.error_not_active")) unless result[:contact_found]
 
       user = find_or_provision_user(normalized, result[:name])
-      unless user.persisted?
-        return failure(user.errors.full_messages.join("\n"))
-      end
+      return failure(user.errors.full_messages.join("\n")) unless user.persisted?
 
       activate_and_sync(user, result[:offer_ids])
       success(user)
@@ -41,17 +37,14 @@ module KajabiSso
 
     def handle_bypass(email)
       user = find_or_provision_user(email)
-      unless user.persisted?
-        return failure(user.errors.full_messages.join("\n"))
-      end
+      return failure(user.errors.full_messages.join("\n")) unless user.persisted?
 
       activate_and_sync(user, [])
       success(user)
     end
 
     def find_or_provision_user(email, name = nil)
-      User.real.find_by_email(email) ||
-        UserProvisioner.provision(email, name: name)
+      User.real.find_by_email(email) || UserProvisioner.provision(email, name: name)
     end
 
     def activate_and_sync(user, offer_ids)
