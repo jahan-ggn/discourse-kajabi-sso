@@ -13,8 +13,6 @@ module ::KajabiSso
 end
 
 require_relative "lib/kajabi_sso/engine"
-require_relative "lib/kajabi_sso/users_controller_extension"
-
 register_asset "stylesheets/common/kajabi-sso.scss"
 
 after_initialize { UsersController.prepend(::KajabiSso::UsersControllerExtension) }

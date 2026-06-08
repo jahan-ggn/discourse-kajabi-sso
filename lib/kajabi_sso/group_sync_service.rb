@@ -21,23 +21,33 @@ module KajabiSso
       to_add = target_names - current_names
       to_remove = current_names - target_names
 
-      to_add.each { |name| add_to_group(name) }
-      to_remove.each { |name| remove_from_group(name) }
+      return if to_add.empty? && to_remove.empty?
 
-      log_sync(to_add, to_remove) if to_add.any? || to_remove.any?
+      groups_by_name = Group.where(name: to_add + to_remove).index_by(&:name)
+
+      Group.transaction do
+        to_add.each { |name| add_to_group(groups_by_name[name]) }
+        to_remove.each { |name| remove_from_group(groups_by_name[name]) }
+      end
+
+      log_sync(to_add, to_remove)
+
+      MessageBus.publish(
+        "/user/#{@user.id}",
+        { type: "refresh_groups", added: to_add, removed: to_remove },
+        user_ids: [@user.id]
+      )
     end
 
     private
 
-    def add_to_group(name)
-      group = Group.find_by_name(name)
+    def add_to_group(group)
       return unless group
 
       group.add(@user)
     end
 
-    def remove_from_group(name)
-      group = Group.find_by_name(name)
+    def remove_from_group(group)
       return unless group
 
       group.remove(@user)
@@ -45,7 +55,7 @@ module KajabiSso
 
     def log_sync(added, removed)
       Rails.logger.info(
-        "[KajabiSSO] GroupSync user=#{@user.id} +[#{added.join(",")}] -[#{removed.join(",")}]",
+        "[KajabiSSO] GroupSync user=#{@user.id} +[#{added.join(",")}] -[#{removed.join(",")}]"
       )
     end
   end

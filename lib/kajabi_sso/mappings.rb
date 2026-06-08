@@ -42,18 +42,29 @@ module KajabiSso
         raw = SiteSetting.kajabi_offer_group_mapping.to_s.strip
         return {} if raw.blank?
 
+        entries = []
+        raw
+          .split("|")
+          .each do |entry|
+            entry = entry.strip
+            next if entry.blank? || entry.start_with?("#")
+
+            offer_id, group_name = entry.split(":", 2).map(&:strip)
+            next if offer_id.blank? || group_name.blank?
+
+            entries << [offer_id, group_name]
+          end
+
+        group_names = entries.map(&:last).uniq
+        groups_by_name = Group.where(name: group_names).index_by(&:name)
+
         mappings = {}
-
-        raw.split("|").each do |entry|
-          entry = entry.strip
-          next if entry.blank? || entry.start_with?("#")
-
-          offer_id, group_name = entry.split(":", 2).map(&:strip)
-          next if offer_id.blank? || group_name.blank?
-
-          group = Group.find_by_name(group_name)
+        entries.each do |offer_id, group_name|
+          group = groups_by_name[group_name]
           unless group
-            Rails.logger.warn("[KajabiSSO] Mapped group '#{group_name}' not found; skipping.")
+            Rails.logger.warn(
+              "[KajabiSSO] Mapped group '#{group_name}' not found; skipping."
+            )
             next
           end
 

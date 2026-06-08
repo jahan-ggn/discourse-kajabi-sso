@@ -15,9 +15,9 @@ module KajabiSso
 
       case event
       when "purchase.created"
-        handle_purchase_created(payload["payload"] || payload)
+        process_webhook(payload["payload"] || payload)
       when "payment.succeeded"
-        handle_purchase_created(
+        process_webhook(
           "member_email" => payload.dig("member", "email"),
           "member_name" => payload.dig("member", "name"),
           "offer_id" => payload.dig("offer", "id")&.to_s,
@@ -37,24 +37,14 @@ module KajabiSso
       {}
     end
 
-    def handle_purchase_created(payload)
-      email = payload["member_email"]
-      offer_id = payload["offer_id"]&.to_s
-      name = payload["member_name"]
+    def process_webhook(payload)
+      result = WebhookProcessor.process(payload)
 
-      return bad_request("missing email") if email.blank?
-      return bad_request("missing offer_id") if offer_id.blank?
-
-      user = User.find_by_email(email) || UserProvisioner.provision(email, name: name)
-      return render_error(user) unless user.persisted?
-
-      UserActivator.activate!(user)
-
-      offer_ids = Array(ApiClient.instance.active_member?(email)[:offer_ids]) | [offer_id]
-      GroupSyncService.sync(user, offer_ids)
-      UserTracker.track!(user)
-
-      render json: { status: "synced" }, status: :ok
+      if result.success?
+        render json: { status: "synced" }, status: :ok
+      else
+        render json: { error: result.error }, status: :unprocessable_content
+      end
     end
 
     def valid_secret?
@@ -67,14 +57,6 @@ module KajabiSso
 
     def forbidden
       render json: { error: "forbidden" }, status: :forbidden
-    end
-
-    def bad_request(msg)
-      render json: { error: msg }, status: :unprocessable_content
-    end
-
-    def render_error(user)
-      render json: { error: user.errors.full_messages.join(", ") }, status: :unprocessable_content
     end
   end
 end

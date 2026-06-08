@@ -13,7 +13,8 @@ module KajabiSso
 
     def provision
       username = UserNameSuggester.suggest(@name.presence || @email)
-      display_name = @name.presence || @email.split("@").first&.titleize || username
+      display_name =
+        @name.presence || @email.split("@").first&.titleize || username
 
       user =
         User.new(
@@ -23,7 +24,7 @@ module KajabiSso
           staged: false,
           active: true,
           approved: true,
-          trust_level: TrustLevel[0],
+          trust_level: TrustLevel[0]
         )
 
       user.save

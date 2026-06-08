@@ -24,37 +24,6 @@ module ::KajabiSso
       @client_secret = client_secret
     end
 
-    def active_member?(email)
-      return no_contact_result if email.blank?
-
-      token = fetch_access_token
-      contact = find_contact(token, email)
-      return no_contact_result unless contact
-
-      contact_id = contact.dig("id")
-      customer_id = contact.dig("relationships", "customer", "data", "id")
-      name = contact.dig("attributes", "name")
-
-      offer_ids = customer_id.present? ? active_offer_ids(token, contact_id, customer_id) : []
-
-      { contact_found: true, name: name, offer_ids: offer_ids }
-    rescue UnauthorizedError, UnavailableError, ApiError => e
-      Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(email)} | #{e.message}")
-      no_contact_result
-    end
-
-    def active_offer_ids(token, contact_id, customer_id)
-      purchase_ids = fetch_purchase_offer_ids(token, customer_id)
-      granted_ids = fetch_granted_offer_ids(token, contact_id)
-      (purchase_ids + granted_ids).uniq
-    end
-
-    private
-
-    def no_contact_result
-      { contact_found: false, name: nil, offer_ids: [] }
-    end
-
     def fetch_access_token
       cached = Rails.cache.read(token_cache_key)
       return cached if cached.present?
@@ -64,7 +33,7 @@ module ::KajabiSso
       req.set_form_data(
         grant_type: "client_credentials",
         client_id: @client_id,
-        client_secret: @client_secret,
+        client_secret: @client_secret
       )
 
       data = request_json(uri, req)
@@ -87,10 +56,12 @@ module ::KajabiSso
       contacts = data["data"] || []
       return nil if contacts.empty?
 
-      contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
+      contacts.find do |c|
+        c.dig("attributes", "email")&.downcase == normalized_email
+      end
     end
 
-    def fetch_purchase_offer_ids(token, customer_id)
+    def active_purchase_offer_ids(token, customer_id)
       ids = []
       url =
         "#{KAJABI_API_URL}/purchases?filter[customer_id]=#{customer_id}&filter[active]=true&page[size]=100"
@@ -109,7 +80,7 @@ module ::KajabiSso
       ids
     end
 
-    def fetch_granted_offer_ids(token, contact_id)
+    def granted_offer_ids(token, contact_id)
       uri = URI("#{KAJABI_API_URL}/contacts/#{contact_id}/relationships/offers")
       data = authorized_json_request(uri, token)
       (data["data"] || []).filter_map { |o| o.dig("id") }
@@ -117,6 +88,8 @@ module ::KajabiSso
       Rails.logger.warn("[KajabiSSO] Granted offers fetch failed: #{e.message}")
       []
     end
+
+    private
 
     def authorized_json_request(uri, token)
       req = Net::HTTP::Get.new(uri)
@@ -156,13 +129,6 @@ module ::KajabiSso
       JSON.parse(response.body)
     rescue JSON::ParserError
       raise ApiError, "Invalid JSON from Kajabi"
-    end
-
-    def mask_email(email)
-      return "blank" if email.blank?
-      local, domain = email.split("@")
-      return email if local.length <= 3
-      "#{local[0, 3]}***@#{domain}"
     end
 
     def token_cache_key

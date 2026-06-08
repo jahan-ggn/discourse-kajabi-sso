@@ -10,7 +10,7 @@ module Jobs
       managed_group_ids = KajabiSso::Mappings.managed_group_ids
       return if managed_group_ids.blank?
 
-      users_to_sync(managed_group_ids).find_each do |user|
+      KajabiSso::UsersQuery.to_sync(managed_group_ids).find_each do |user|
         begin
           sync_user(user)
         rescue StandardError => e
@@ -25,18 +25,8 @@ module Jobs
       KajabiSso::Configuration.enabled? && KajabiSso::Configuration.valid_credentials?
     end
 
-    def users_to_sync(group_ids)
-      group_user_ids = GroupUser.where(group_id: group_ids).distinct.pluck(:user_id)
-      custom_field_user_ids = UserCustomField.where(name: "kajabi_sso").distinct.pluck(:user_id)
-
-      all_ids = (group_user_ids + custom_field_user_ids).uniq
-      return User.none if all_ids.empty?
-
-      User.real.not_suspended.where(id: all_ids)
-    end
-
     def sync_user(user)
-      result = KajabiSso::ApiClient.instance.active_member?(user.email)
+      result = KajabiSso::MembershipResolver.resolve(user.email)
       KajabiSso::GroupSyncService.sync(user, result[:offer_ids])
     end
   end

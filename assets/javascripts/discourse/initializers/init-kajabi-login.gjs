@@ -3,19 +3,18 @@ import { apiInitializer } from "discourse/lib/api";
 import KajabiLoginModal from "../components/kajabi-login-modal";
 
 export default apiInitializer((api) => {
-  const siteSettings = api.container.lookup("service:site-settings");
-
-  if (!siteSettings.kajabi_sso_enabled) {
-    return;
-  }
-
   api.modifyClass(
     "route:login",
     (Superclass) =>
       class extends Superclass {
         @service modal;
+        @service siteSettings;
 
         beforeModel(transition) {
+          if (!this.siteSettings.kajabi_sso_enabled) {
+            return super.beforeModel?.(transition);
+          }
+
           transition.abort();
           this.modal.show(KajabiLoginModal);
         }
@@ -26,11 +25,27 @@ export default apiInitializer((api) => {
     "route:signup",
     (Superclass) =>
       class extends Superclass {
+        @service siteSettings;
+
         beforeModel(transition) {
+          if (!this.siteSettings.kajabi_sso_enabled) {
+            return super.beforeModel?.(transition);
+          }
+
           transition.abort();
-          const url = siteSettings.kajabi_signup_redirect_url;
-          window.location.href = url || "#";
+          window.location.href =
+            this.siteSettings.kajabi_signup_redirect_url || "#";
         }
       }
   );
+
+  const currentUser = api.getCurrentUser();
+  if (currentUser) {
+    const messageBus = api.container.lookup("service:message-bus");
+    messageBus.subscribe(`/user/${currentUser.id}`, (data) => {
+      if (data.type === "refresh_groups") {
+        currentUser.refresh();
+      }
+    });
+  }
 });
