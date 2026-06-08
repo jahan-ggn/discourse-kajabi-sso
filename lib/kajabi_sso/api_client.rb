@@ -17,6 +17,14 @@ module ::KajabiSso
       def instance
         new(SiteSetting.kajabi_client_id, SiteSetting.kajabi_client_secret)
       end
+
+      def with_circuit
+        CircuitBreaker.check
+        yield
+      rescue UnavailableError, CircuitOpenError => e
+        CircuitBreaker.record_failure
+        raise e
+      end
     end
 
     def initialize(client_id, client_secret)
@@ -25,38 +33,45 @@ module ::KajabiSso
     end
 
     def fetch_access_token
-      cached = Rails.cache.read(token_cache_key)
-      return cached if cached.present?
+      self.class.with_circuit do
+        cached = Rails.cache.read(token_cache_key)
+        return cached if cached.present?
 
-      uri = URI(KAJABI_AUTH_URL)
-      req = Net::HTTP::Post.new(uri)
-      req.set_form_data(
-        grant_type: "client_credentials",
-        client_id: @client_id,
-        client_secret: @client_secret,
-      )
+        uri = URI(KAJABI_AUTH_URL)
+        req = Net::HTTP::Post.new(uri)
+        req.set_form_data(
+          grant_type: "client_credentials",
+          client_id: @client_id,
+          client_secret: @client_secret,
+        )
 
-      data = request_json(uri, req)
-      token = data["access_token"]
-      raise UnauthorizedError, "Bad credentials: #{data.inspect}" unless token
+        data = request_json(uri, req)
+        token = data["access_token"]
+        raise UnauthorizedError, "Bad credentials: #{data.inspect}" unless token
 
-      ttl = data["expires_in"].to_i
-      ttl = 3600 if ttl <= 0
-      Rails.cache.write(token_cache_key, token, expires_in: ttl - 60)
+        ttl = data["expires_in"].to_i
+        ttl = 3600 if ttl <= 0
+        Rails.cache.write(token_cache_key, token, expires_in: ttl - 60)
+        CircuitBreaker.record_success
 
-      token
+        token
+      end
     end
 
     def find_contact(token, email)
-      normalized_email = Email.downcase(email)
-      encoded_email = CGI.escape(normalized_email)
-      uri = URI("#{KAJABI_API_URL}/contacts?filter[search]=#{encoded_email}")
+      self.class.with_circuit do
+        normalized_email = Email.downcase(email)
+        encoded_email = CGI.escape(normalized_email)
+        uri = URI("#{KAJABI_API_URL}/contacts?filter[search]=#{encoded_email}")
 
-      data = authorized_json_request(uri, token)
-      contacts = data["data"] || []
-      return nil if contacts.empty?
+        data = authorized_json_request(uri, token)
+        contacts = data["data"] || []
+        return nil if contacts.empty?
 
-      contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
+        contact = contacts.find { |c| c.dig("attributes", "email")&.downcase == normalized_email }
+        CircuitBreaker.record_success if contact
+        contact
+      end
     end
 
     def active_purchase_offer_ids(token, customer_id)

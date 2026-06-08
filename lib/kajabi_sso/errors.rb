@@ -9,4 +9,7 @@ module ::KajabiSso
 
   class UnavailableError < ApiError
   end
+
+  class CircuitOpenError < UnavailableError
+  end
 end

@@ -24,9 +24,7 @@ module KajabiSso
       end
 
       UserActivator.activate!(user)
-
-      offer_ids = fetch_all_offer_ids(email) | [offer_id]
-      GroupSyncService.sync(user, offer_ids)
+      GroupSyncService.add_for_offer(user, offer_id)
       UserTracker.track!(user)
 
       Result.new(success: true)
@@ -48,10 +46,6 @@ module KajabiSso
 
     def find_or_provision_user(email, name)
       User.find_by_email(email) || UserProvisioner.provision(email, name: name)
-    end
-
-    def fetch_all_offer_ids(email)
-      Array(MembershipResolver.resolve(email)[:offer_ids])
     end
   end
 end

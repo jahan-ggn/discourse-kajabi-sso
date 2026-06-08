@@ -5,6 +5,7 @@ module Jobs
     sidekiq_options retry: 3
 
     def execute(args)
+      Rails.logger.warn("[KajabiSSO] Webhook job started: #{args["payload"].inspect}")
       payload = args["payload"]
       return if payload.blank?
 

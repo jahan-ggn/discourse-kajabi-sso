@@ -8,6 +8,9 @@ module KajabiSso
     skip_before_action :verify_authenticity_token, raise: false
 
     def membership
+      return rate_limited if rate_limiter && !rate_limiter.can_perform?
+      rate_limiter&.performed!
+
       return forbidden unless valid_secret?
 
       payload = parse_payload
@@ -29,6 +32,21 @@ module KajabiSso
 
     private
 
+    def rate_limiter
+      @rate_limiter ||=
+        RateLimiter.new(
+          nil,
+          "kajabi_webhook:#{request.remote_ip}",
+          10,
+          60,
+          error_code: "kajabi_webhook_rate_limited",
+        )
+    end
+
+    def rate_limited
+      render json: { error: "rate_limited" }, status: 429
+    end
+
     def parse_payload
       body = request.body.read
       request.body.rewind
@@ -38,17 +56,17 @@ module KajabiSso
     end
 
     def process_webhook(payload)
-      result = WebhookProcessor.process(payload)
-
-      if result.success?
-        render json: { status: "synced" }, status: :ok
-      else
-        render json: { error: result.error }, status: :unprocessable_content
-      end
+      Jobs.enqueue(:process_kajabi_webhook, payload: payload)
+      render json: { status: "queued" }, status: :accepted
     end
 
     def valid_secret?
-      return true if SiteSetting.kajabi_webhook_secret.blank?
+      if SiteSetting.kajabi_webhook_secret.blank?
+        Rails.logger.warn(
+          "[KajabiSSO] Webhook received but kajabi_webhook_secret is blank; accepting without verification.",
+        )
+        return true
+      end
       ActiveSupport::SecurityUtils.secure_compare(
         params[:secret].to_s,
         SiteSetting.kajabi_webhook_secret,

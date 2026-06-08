@@ -6,6 +6,10 @@ module KajabiSso
       new(user, offer_ids).sync
     end
 
+    def self.add_for_offer(user, offer_id)
+      new(user, [offer_id]).add_only
+    end
+
     def initialize(user, offer_ids)
       @user = user
       @offer_ids = Array(offer_ids).map(&:to_s)
@@ -31,6 +35,28 @@ module KajabiSso
       end
 
       log_sync(to_add, to_remove)
+
+      MessageBus.publish(
+        "/user/#{@user.id}",
+        { type: "refresh_groups", groups: @user.groups.map { |g| { id: g.id, name: g.name } } },
+        user_ids: [@user.id],
+      )
+    end
+
+    def add_only
+      return if @user.blank? || @user.staged?
+
+      target_names = Mappings.group_names_for(@offer_ids)
+      current_names = @user.groups.where(name: target_names).pluck(:name)
+
+      to_add = target_names - current_names
+      return if to_add.empty?
+
+      groups_by_name = Group.where(name: to_add).index_by(&:name)
+
+      to_add.each { |name| add_to_group(groups_by_name[name]) }
+
+      Rails.logger.info("[KajabiSSO] GroupAdd user=#{@user.id} +[#{to_add.join(",")}]")
 
       MessageBus.publish(
         "/user/#{@user.id}",

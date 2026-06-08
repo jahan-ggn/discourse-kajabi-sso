@@ -15,4 +15,6 @@ end
 require_relative "lib/kajabi_sso/engine"
 register_asset "stylesheets/common/kajabi-sso.scss"
 
-after_initialize { UsersController.prepend(::KajabiSso::UsersControllerExtension) }
+after_initialize do
+  reloadable_patch { UsersController.prepend(::KajabiSso::UsersControllerExtension) }
+end

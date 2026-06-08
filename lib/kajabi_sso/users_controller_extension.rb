@@ -14,7 +14,7 @@ module KajabiSso
           )
         end
 
-        result = KajabiSso::LoginService.perform(params[:login])
+        result = KajabiSso::LoginPipeline.call(params[:login])
 
         if result.failure?
           return(
