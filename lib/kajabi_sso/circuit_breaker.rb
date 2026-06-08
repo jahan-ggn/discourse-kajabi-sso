@@ -19,9 +19,7 @@ module KajabiSso
     end
 
     def check
-      if open? && !expired?
-        raise CircuitOpenError, "Kajabi API is temporarily unavailable"
-      end
+      raise CircuitOpenError, "Kajabi API is temporarily unavailable" if open? && !expired?
 
       reset if expired?
     end
