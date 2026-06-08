@@ -15,6 +15,8 @@ end
 require_relative "lib/kajabi_sso/engine"
 register_asset "stylesheets/common/kajabi-sso.scss"
 
+add_admin_route "discourse_kajabi_sso.admin.nav_title", "kajabi-offers"
+
 after_initialize do
   reloadable_patch { UsersController.prepend(::KajabiSso::UsersControllerExtension) }
 end

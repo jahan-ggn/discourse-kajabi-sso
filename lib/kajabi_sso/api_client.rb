@@ -102,6 +102,27 @@ module ::KajabiSso
       []
     end
 
+    def offers(token)
+      all_offers = []
+      url = "#{KAJABI_API_URL}/offers?page[size]=100"
+      pages_fetched = 0
+
+      while url.present? && pages_fetched < MAX_PAGES
+        data = authorized_json_request(URI(url), token)
+        (data["data"] || []).each do |o|
+          all_offers << {
+            id: o.dig("id"),
+            title: o.dig("attributes", "title"),
+            internal_title: o.dig("attributes", "internal_title"),
+          }
+        end
+        url = data.dig("links", "next")
+        pages_fetched += 1
+      end
+
+      all_offers
+    end
+
     private
 
     def authorized_json_request(uri, token)

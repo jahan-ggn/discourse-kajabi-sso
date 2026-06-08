@@ -18,4 +18,14 @@ en:
         done_button: "Done"
         error_generic: "Something went wrong. Please try again."
         loading: "Checking your membership…"
-
+      admin:
+        offers_title: "Kajabi Offers"
+        loading: "Loading offers..."
+        fetch_error: "Failed to fetch offers from Kajabi"
+        id: "ID"
+        title: "Title"
+        internal_title: "Internal Title"
+        copy_id: "Copy ID"
+        no_offers: "No offers found"
+        nav_title: "Kajabi Offers"
+        copied: "Offer ID copied to clipboard"
