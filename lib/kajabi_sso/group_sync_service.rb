@@ -25,16 +25,18 @@ module KajabiSso
       to_add = target_names - current_names
       to_remove = current_names - target_names
 
-      return if to_add.empty? && to_remove.empty?
-
       groups_by_name = Group.where(name: to_add + to_remove).index_by(&:name)
+      actual_add = to_add.filter { |name| groups_by_name.key?(name) }
+      actual_remove = to_remove.filter { |name| groups_by_name.key?(name) }
+
+      return if actual_add.empty? && actual_remove.empty?
 
       Group.transaction do
-        to_add.each { |name| add_to_group(groups_by_name[name]) }
-        to_remove.each { |name| remove_from_group(groups_by_name[name]) }
+        actual_add.each { |name| add_to_group(groups_by_name[name]) }
+        actual_remove.each { |name| remove_from_group(groups_by_name[name]) }
       end
 
-      log_sync(to_add, to_remove)
+      log_sync(actual_add, actual_remove)
 
       MessageBus.publish(
         "/user/#{@user.id}",
@@ -53,10 +55,13 @@ module KajabiSso
       return if to_add.empty?
 
       groups_by_name = Group.where(name: to_add).index_by(&:name)
+      actual_add = to_add.filter { |name| groups_by_name.key?(name) }
 
-      to_add.each { |name| add_to_group(groups_by_name[name]) }
+      return if actual_add.empty?
 
-      Rails.logger.info("[KajabiSSO] GroupAdd user=#{@user.id} +[#{to_add.join(",")}]")
+      actual_add.each { |name| add_to_group(groups_by_name[name]) }
+
+      Rails.logger.info("[KajabiSSO] GroupAdd user=#{@user.id} +[#{actual_add.join(",")}]")
 
       MessageBus.publish(
         "/user/#{@user.id}",

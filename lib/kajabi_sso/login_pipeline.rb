@@ -20,7 +20,12 @@ module KajabiSso
       user = UserFinder.find(email)
       return Result.success(user: user) if user&.staff?
 
-      membership = MembershipResolver.resolve(email)
+      begin
+        membership = MembershipResolver.resolve(email)
+      rescue KajabiSso::CircuitOpenError
+        return Result.failure(I18n.t("kajabi_sso.api_unavailable"))
+      end
+
       return Result.failure(I18n.t("kajabi_sso.error_not_active")) unless membership[:contact_found]
 
       user = UserFinder.find_or_provision(email, membership[:name])

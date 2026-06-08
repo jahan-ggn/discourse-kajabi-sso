@@ -12,3 +12,4 @@ en:
       misconfigured: "Kajabi SSO is not properly configured. Please contact the administrator."
       invalid_email: "Please enter a valid email address."
       error_not_active: "No active Kajabi membership found."
+      api_unavailable: "Kajabi service is temporarily unavailable. Please try again later."

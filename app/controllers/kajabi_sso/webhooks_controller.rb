@@ -44,7 +44,7 @@ module KajabiSso
     end
 
     def rate_limited
-      render json: { error: "rate_limited" }, status: 429
+      render json: { error: "rate_limited" }, status: :too_many_requests
     end
 
     def parse_payload

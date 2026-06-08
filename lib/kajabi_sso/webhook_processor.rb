@@ -45,7 +45,7 @@ module KajabiSso
     end
 
     def find_or_provision_user(email, name)
-      User.find_by_email(email) || UserProvisioner.provision(email, name: name)
+      User.real.find_by_email(email) || UserProvisioner.provision(email, name: name)
     end
   end
 end
