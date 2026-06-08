@@ -42,10 +42,16 @@ export default apiInitializer((api) => {
   const currentUser = api.getCurrentUser();
   if (currentUser) {
     const messageBus = api.container.lookup("service:message-bus");
-    messageBus.subscribe(`/user/${currentUser.id}`, (data) => {
-      if (data.type === "refresh_groups") {
-        currentUser.refresh();
-      }
-    });
+    if (messageBus) {
+      messageBus.subscribe(`/user/${currentUser.id}`, (data) => {
+        if (data.type === "refresh_groups" && data.groups) {
+          if (typeof currentUser.set === "function") {
+            currentUser.set("groups", data.groups);
+          } else {
+            currentUser.groups = data.groups;
+          }
+        }
+      });
+    }
   }
 });

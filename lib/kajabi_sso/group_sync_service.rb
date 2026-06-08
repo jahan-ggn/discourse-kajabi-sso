@@ -31,10 +31,14 @@ module KajabiSso
       end
 
       log_sync(to_add, to_remove)
+      puts "F =====> #{@user.groups.map(&:name)}" # DEBUG
 
       MessageBus.publish(
         "/user/#{@user.id}",
-        { type: "refresh_groups", added: to_add, removed: to_remove },
+        {
+          type: "refresh_groups",
+          groups: @user.groups.map { |g| { id: g.id, name: g.name } }
+        },
         user_ids: [@user.id]
       )
     end
