@@ -31,7 +31,6 @@ module KajabiSso
       end
 
       log_sync(to_add, to_remove)
-      puts "F =====> #{@user.groups.map(&:name)}" # DEBUG
 
       MessageBus.publish(
         "/user/#{@user.id}",
