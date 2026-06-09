@@ -15,11 +15,7 @@ module KajabiSso
     end
 
     def cacheable
-      {
-        contact_found: @contact_found,
-        name: @name,
-        offer_ids: @offer_ids,
-      }
+      { contact_found: @contact_found, name: @name, offer_ids: @offer_ids }
     end
   end
 end

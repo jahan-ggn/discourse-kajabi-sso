@@ -22,7 +22,11 @@ module KajabiSso
         return cached if cached.present?
 
         token_data = fetch_token
-        @cache.write(cache_key, token_data[:token], expires_in: token_data[:expires_in] - TOKEN_CACHE_BUFFER)
+        @cache.write(
+          cache_key,
+          token_data[:token],
+          expires_in: token_data[:expires_in] - TOKEN_CACHE_BUFFER,
+        )
         token_data[:token]
       end
 

@@ -15,22 +15,22 @@ module KajabiSso
 
     def normalize
       case @event
-        when "purchase.created"
-            Result.success(
-                value: {
-                "member_email" => extract_purchase_email,
-                "member_name" => extract_purchase_name,
-                "offer_id" => extract_purchase_offer_id,
-                }
-            )
-        when "payment.succeeded"
-            Result.success(
-                value: {
-                "member_email" => @payload.dig("member", "email"),
-                "member_name" => @payload.dig("member", "name"),
-                "offer_id" => @payload.dig("offer", "id")&.to_s,
-                }
-            )
+      when "purchase.created"
+        Result.success(
+          value: {
+            "member_email" => extract_purchase_email,
+            "member_name" => extract_purchase_name,
+            "offer_id" => extract_purchase_offer_id,
+          },
+        )
+      when "payment.succeeded"
+        Result.success(
+          value: {
+            "member_email" => @payload.dig("member", "email"),
+            "member_name" => @payload.dig("member", "name"),
+            "offer_id" => @payload.dig("offer", "id")&.to_s,
+          },
+        )
       else
         Result.failure("unsupported event")
       end

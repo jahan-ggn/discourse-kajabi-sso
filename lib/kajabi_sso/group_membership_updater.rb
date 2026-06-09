@@ -33,7 +33,7 @@ module KajabiSso
 
     def log_changes(added, removed)
       Rails.logger.info(
-        "[KajabiSSO] GroupSync user=#{@changeset.user.id} +[#{added.join(",")}] -[#{removed.join(",")}]"
+        "[KajabiSSO] GroupSync user=#{@changeset.user.id} +[#{added.join(",")}] -[#{removed.join(",")}]",
       )
     end
 
@@ -42,9 +42,9 @@ module KajabiSso
         "/user/#{@changeset.user.id}",
         {
           type: "refresh_groups",
-          groups: @changeset.user.groups.map { |g| { id: g.id, name: g.name } }
+          groups: @changeset.user.groups.map { |g| { id: g.id, name: g.name } },
         },
-        user_ids: [@changeset.user.id]
+        user_ids: [@changeset.user.id],
       )
     end
   end
