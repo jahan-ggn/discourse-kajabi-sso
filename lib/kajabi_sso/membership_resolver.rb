@@ -13,7 +13,7 @@ module KajabiSso
     end
 
     def resolve
-      return no_contact_result if @email.blank?
+      return empty_membership if @email.blank?
 
       cached = read_cache
       return cached if cached.present?
@@ -27,10 +27,9 @@ module KajabiSso
 
     def fetch_from_api
       client = ApiClient.instance
-      token = client.fetch_access_token
-      contact = client.find_contact(token, @email)
+      contact = client.find_contact(@email)
 
-      return no_contact_result unless contact
+      return empty_membership unless contact
 
       contact_id = contact.dig("id")
       customer_id = contact.dig("relationships", "customer", "data", "id")
@@ -38,49 +37,48 @@ module KajabiSso
 
       offer_ids =
         if customer_id.present?
-          purchase_ids = client.active_purchase_offer_ids(token, customer_id)
-          granted_ids = client.granted_offer_ids(token, contact_id)
+          purchase_ids = client.active_purchase_offer_ids(customer_id)
+          granted_ids = client.granted_offer_ids(contact_id)
           (purchase_ids + granted_ids).uniq
         else
           []
         end
 
-      { contact_found: true, name: name, offer_ids: offer_ids }
-    rescue CircuitOpenError
+      Membership.new(contact_found: true, name: name, offer_ids: offer_ids)
+    rescue UnauthorizedError => e
+      Rails.logger.warn("[KajabiSSO] Authentication failed: #{e.class} | #{mask_email(@email)}")
+      raise
+    rescue UnavailableError => e
+      Rails.logger.warn(
+        "[KajabiSSO] API unavailable: #{e.class} | #{mask_email(@email)} | #{e.message}",
+      )
       raise
     rescue ApiError => e
       Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(@email)} | #{e.message}")
-      no_contact_result
+      empty_membership
     end
 
-    def no_contact_result
-      { contact_found: false, name: nil, offer_ids: [] }
+    def empty_membership
+      Membership.new(contact_found: false, name: nil, offer_ids: [])
     end
 
     def read_cache
-      Rails.cache.read(cache_key)
-    end
+      cached = Rails.cache.read(cache_key)
+      return cached unless cached
 
-    def write_cache(result)
-      Rails.cache.write(
-        cache_key,
-        {
-          contact_found: result[:contact_found],
-          name: result[:name],
-          offer_ids: result[:offer_ids],
-        },
-        expires_in: MEMBERSHIP_CACHE_TTL,
+      Membership.new(
+        contact_found: cached[:contact_found],
+        name: cached[:name],
+        offer_ids: cached[:offer_ids],
       )
     end
 
+    def write_cache(membership)
+      Rails.cache.write(cache_key, membership.cacheable, expires_in: MEMBERSHIP_CACHE_TTL)
+    end
+
     def cache_key
-      db =
-        begin
-          RailsMultisite::ConnectionManagement.current_db
-        rescue StandardError
-          "default"
-        end
-      "#{db}:kajabi_sso:m:#{Digest::SHA256.hexdigest(@email)}"
+      Infrastructure::CacheKeyBuilder.build("m", Digest::SHA256.hexdigest(@email))
     end
 
     def mask_email(email)

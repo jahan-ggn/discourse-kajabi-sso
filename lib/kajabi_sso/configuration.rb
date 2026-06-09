@@ -6,7 +6,7 @@ module KajabiSso
       SiteSetting.kajabi_sso_enabled
     end
 
-    def self.valid_credentials?
+    def self.credentials_present?
       SiteSetting.kajabi_client_id.present? && SiteSetting.kajabi_client_secret.present?
     end
 
@@ -14,13 +14,6 @@ module KajabiSso
       return [] if SiteSetting.kajabi_bypass_domains.blank?
 
       SiteSetting.kajabi_bypass_domains.split(/[,|]+/).map(&:strip).map(&:downcase).reject(&:blank?)
-    end
-
-    def self.bypass?(email)
-      return false if email.blank?
-
-      domain = email.split("@").last&.downcase
-      bypass_domains.include?(domain)
     end
   end
 end

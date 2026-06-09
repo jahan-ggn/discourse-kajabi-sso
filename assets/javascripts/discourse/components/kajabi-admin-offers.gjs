@@ -44,13 +44,13 @@ export default class KajabiAdminOffers extends Component {
   <template>
     <div class="kajabi-admin-offers">
       {{#if this.loading}}
-        <div class="loading">
+        <div class="kajabi-admin-offers__loading">
           <DConditionalLoadingSpinner @condition={{true}} />
         </div>
       {{else if this.error}}
-        <div class="alert alert-error">{{this.error}}</div>
+        <div class="kajabi-admin-offers__error">{{this.error}}</div>
       {{else if this.offers.length}}
-        <table class="table">
+        <table class="kajabi-admin-offers__table">
           <thead>
             <tr>
               <th>{{i18n "discourse_kajabi_sso.admin.id"}}</th>
@@ -79,7 +79,9 @@ export default class KajabiAdminOffers extends Component {
           </tbody>
         </table>
       {{else}}
-        <div class="alert">{{i18n "discourse_kajabi_sso.admin.no_offers"}}</div>
+        <div class="kajabi-admin-offers__empty">{{i18n
+            "discourse_kajabi_sso.admin.no_offers"
+          }}</div>
       {{/if}}
     </div>
   </template>

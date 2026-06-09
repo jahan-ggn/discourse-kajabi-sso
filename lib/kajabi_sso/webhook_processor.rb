@@ -23,10 +23,7 @@ module KajabiSso
         return(Result.new(success: false, error: user.errors.full_messages.join(", ")))
       end
 
-      UserActivator.activate!(user)
-      GroupSyncService.add_for_offer(user, offer_id)
-      UserTracker.track!(user)
-
+      UserLifecycleService.apply(user, [offer_id], mode: :add_only)
       Result.new(success: true)
     end
 

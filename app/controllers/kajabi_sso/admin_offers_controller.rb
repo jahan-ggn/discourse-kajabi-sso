@@ -5,13 +5,12 @@ module KajabiSso
     requires_plugin PLUGIN_NAME
 
     def index
-      unless Configuration.valid_credentials?
+      unless Configuration.credentials_present?
         return render json: { error: "not configured" }, status: :unprocessable_content
       end
 
       client = ApiClient.instance
-      token = client.fetch_access_token
-      offers = client.offers(token)
+      offers = client.offers
 
       render json: { offers: offers }
     rescue ApiError => e

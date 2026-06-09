@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../../../lib/kajabi_sso/errors"
+
 module Jobs
   class KajabiSyncMemberships < ::Jobs::Scheduled
     every 6.hours
@@ -15,7 +17,7 @@ module Jobs
         .find_each do |user|
           begin
             sync_user(user)
-          rescue StandardError => e
+          rescue KajabiSso::ApiError, KajabiSso::CircuitOpenError => e
             Rails.logger.warn("[KajabiSSO] Scheduled sync failed for #{user.email}: #{e.message}")
           end
         end
@@ -24,12 +26,12 @@ module Jobs
     private
 
     def should_run?
-      KajabiSso::Configuration.enabled? && KajabiSso::Configuration.valid_credentials?
+      KajabiSso::Configuration.enabled? && KajabiSso::Configuration.credentials_present?
     end
 
     def sync_user(user)
       result = KajabiSso::MembershipResolver.resolve(user.email)
-      KajabiSso::GroupSyncService.sync(user, result[:offer_ids])
+      KajabiSso::GroupSyncService.sync(user, result.offer_ids)
     end
   end
 end

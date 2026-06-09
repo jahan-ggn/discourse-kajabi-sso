@@ -55,21 +55,11 @@ module KajabiSso
     end
 
     def failure_key
-      "#{cache_prefix}:failures"
+      Infrastructure::CacheKeyBuilder.build("circuit", "failures")
     end
 
     def open_key
-      "#{cache_prefix}:open"
-    end
-
-    def cache_prefix
-      db =
-        begin
-          RailsMultisite::ConnectionManagement.current_db
-        rescue StandardError
-          "default"
-        end
-      "#{db}:kajabi_sso:circuit"
+      Infrastructure::CacheKeyBuilder.build("circuit", "open")
     end
   end
 end

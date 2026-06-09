@@ -15,7 +15,11 @@ module KajabiSso
       return validation unless validation.success?
 
       email = validation.value
-      return bypass_login(email) if BypassChecker.bypass?(email)
+      return bypass_login(email) if BypassPolicy.call(email)
+
+      unless Configuration.credentials_present?
+        return Result.failure(I18n.t("kajabi_sso.misconfigured"))
+      end
 
       user = UserFinder.find(email)
       return Result.success(user: user) if user&.staff?
@@ -24,14 +28,16 @@ module KajabiSso
         membership = MembershipResolver.resolve(email)
       rescue KajabiSso::CircuitOpenError
         return Result.failure(I18n.t("kajabi_sso.api_unavailable"))
+      rescue KajabiSso::UnauthorizedError
+        return Result.failure(I18n.t("kajabi_sso.invalid_credentials"))
       end
 
-      return Result.failure(I18n.t("kajabi_sso.error_not_active")) unless membership[:contact_found]
+      return Result.failure(I18n.t("kajabi_sso.error_not_active")) unless membership.found?
 
-      user = UserFinder.find_or_provision(email, membership[:name])
+      user = UserFinder.find_or_provision(email, membership.name)
       return Result.failure(user.errors.full_messages.join("\n")) unless user.persisted?
 
-      activate_and_sync(user, membership[:offer_ids])
+      UserLifecycleService.apply(user, membership.offer_ids)
       Result.success(user: user)
     end
 
@@ -41,14 +47,8 @@ module KajabiSso
       user = UserFinder.find_or_provision(email)
       return Result.failure(user.errors.full_messages.join("\n")) unless user.persisted?
 
-      activate_and_sync(user, [])
+      UserLifecycleService.apply(user, [])
       Result.success(user: user)
-    end
-
-    def activate_and_sync(user, offer_ids)
-      UserActivator.activate!(user)
-      GroupSyncService.sync(user, offer_ids)
-      UserTracker.track!(user)
     end
   end
 end

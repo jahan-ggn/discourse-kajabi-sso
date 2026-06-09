@@ -13,3 +13,4 @@ en:
     invalid_email: "Please enter a valid email address."
     error_not_active: "No active Kajabi membership found."
     api_unavailable: "Kajabi service is temporarily unavailable. Please try again later."
+    invalid_credentials: "Invalid Kajabi API credentials. Please contact the administrator."

@@ -13,24 +13,21 @@ module KajabiSso
 
       return forbidden unless valid_secret?
 
-      payload = parse_payload
-      event = payload["event"] || request.headers["X-Kajabi-Event"]
+      event = parse_event
+      normalized = WebhookPayloadNormalizer.normalize(event, parse_payload)
 
-      case event
-      when "purchase.created"
-        process_webhook(payload["payload"] || payload)
-      when "payment.succeeded"
-        process_webhook(
-          "member_email" => payload.dig("member", "email"),
-          "member_name" => payload.dig("member", "name"),
-          "offer_id" => payload.dig("offer", "id")&.to_s,
-        )
+      if normalized.success?
+        process_webhook(normalized.value)
       else
         render json: { status: "ignored" }, status: :ok
       end
     end
 
     private
+
+    def parse_event
+      request.headers["X-Kajabi-Event"].presence || parse_payload["event"]
+    end
 
     def rate_limiter
       @rate_limiter ||=
