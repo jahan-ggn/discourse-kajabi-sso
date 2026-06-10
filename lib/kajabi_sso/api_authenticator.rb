@@ -8,7 +8,13 @@ module KajabiSso
     TOKEN_PATH = "oauth/token"
     TOKEN_CACHE_BUFFER = 60
 
-    def initialize(client_id:, client_secret:, base_uri:, transport: HttpTransport.new, cache: Rails.cache)
+    def initialize(
+      client_id:,
+      client_secret:,
+      base_uri:,
+      transport: HttpTransport.new,
+      cache: Rails.cache
+    )
       @client_id = client_id
       @client_secret = client_secret
       @base_uri = base_uri.to_s
