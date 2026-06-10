@@ -4,6 +4,14 @@
     flex-direction: column;
   }
 
+  &__loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 1em;
+    color: var(--primary-medium);
+  }
+
   &__label {
     font-weight: 700;
   }
@@ -63,6 +71,6 @@
   }
 
   &__alert-text {
-    margin-top: 0.125rem;
+    margin-top: 0;
   }
 }

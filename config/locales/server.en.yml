@@ -3,7 +3,14 @@ en:
     kajabi_sso_enabled: "Enable Kajabi membership verification and SSO integration"
     kajabi_client_id: "Kajabi API Client ID"
     kajabi_client_secret: "Kajabi API Client Secret"
+    kajabi_offer_group_mapping: "Map Kajabi offer IDs to Discourse groups, one mapping per line. Format: offer_id:group_name or offer_id:group1,group2 for multiple groups."
+    kajabi_webhook_secret: "Secret token for verifying incoming Kajabi webhooks"
+    kajabi_signup_redirect_url: "URL to redirect non-members when they click Sign Up"
+    kajabi_bypass_domains: "Comma-separated list of email domains to bypass Kajabi SSO (e.g., sourdoughgeeks.com)"
+
   kajabi_sso:
-      misconfigured: "Kajabi SSO is not properly configured. Please contact the administrator."
-      invalid_email: "Please enter a valid email address."
-      error_not_active: "No active Kajabi membership found."
+    misconfigured: "Kajabi SSO is not properly configured. Please contact the administrator."
+    invalid_email: "Please enter a valid email address."
+    error_not_active: "No active Kajabi membership found."
+    api_unavailable: "Kajabi service is temporarily unavailable. Please try again later."
+    invalid_credentials: "Invalid Kajabi API credentials. Please contact the administrator."

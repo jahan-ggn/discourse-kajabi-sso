@@ -13,8 +13,21 @@ module ::KajabiSso
 end
 
 require_relative "lib/kajabi_sso/engine"
-require_relative "lib/kajabi_sso/users_controller_extension"
+require_relative "lib/kajabi_sso/errors"
+register_asset "stylesheets/kajabi-login-modal.scss"
+register_asset "stylesheets/kajabi-admin-offers.scss"
 
-register_asset "stylesheets/common/kajabi-sso.scss"
+add_admin_route "discourse_kajabi_sso.admin.nav_title", "kajabi-offers"
 
-after_initialize { UsersController.prepend(::KajabiSso::UsersControllerExtension) }
+after_initialize do
+  reloadable_patch { UsersController.prepend(::KajabiSso::UsersControllerExtension) }
+
+  on(:site_setting_changed) do |name, old_val, new_val|
+    case name
+    when :kajabi_offer_group_mapping
+      KajabiSso::Mappings.clear_cache!
+    when :kajabi_client_id, :kajabi_client_secret
+      KajabiSso::ApiClient.clear_token_cache!
+    end
+  end
+end
