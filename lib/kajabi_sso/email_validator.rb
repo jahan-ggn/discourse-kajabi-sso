@@ -13,7 +13,7 @@ module KajabiSso
     def validate
       return Result.failure(I18n.t("login.missing_user_field")) if @email.blank?
 
-      normalized = Email.downcase(@email.strip)
+      normalized = @email.to_s.strip.downcase
       unless normalized.match?(URI::MailTo::EMAIL_REGEXP)
         return Result.failure(I18n.t("kajabi_sso.invalid_email"))
       end

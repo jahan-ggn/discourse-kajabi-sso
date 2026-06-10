@@ -71,33 +71,6 @@
   }
 
   &__alert-text {
-    margin-top: 0.125rem;
-  }
-}
-
-.kajabi-admin-offers {
-  padding: 1em;
-
-  &__loading {
-    display: flex;
-    justify-content: center;
-    padding: 2em;
-  }
-
-  &__error {
-    max-width: 600px;
-    margin: 2em auto;
-    text-align: center;
-  }
-
-  &__table {
-    margin-top: 1em;
-    width: 100%;
-  }
-
-  &__empty {
-    max-width: 600px;
-    margin: 2em auto;
-    text-align: center;
+    margin-top: 0;
   }
 }

@@ -4,31 +4,41 @@ module KajabiSso
   class MembershipResolver
     MEMBERSHIP_CACHE_TTL = 30.seconds
 
+    def initialize(api_client:, cache: Rails.cache, logger: Rails.logger)
+      @api_client = api_client
+      @cache = cache
+      @logger = logger
+    end
+
     def self.resolve(email)
-      new(email).resolve
+      new(
+        api_client:
+          ApiClient.new(
+            authenticator:
+              ApiAuthenticator.new(
+                client_id: SiteSetting.kajabi_client_id,
+                client_secret: SiteSetting.kajabi_client_secret,
+                base_uri: ApiClient::BASE_URI,
+              ),
+          ),
+      ).resolve(email)
     end
 
-    def initialize(email)
-      @email = email
-    end
+    def resolve(email)
+      return empty_membership if email.blank?
 
-    def resolve
-      return empty_membership if @email.blank?
-
-      cached = read_cache
+      cached = read_cache(email)
       return cached if cached.present?
 
-      result = fetch_from_api
-      write_cache(result)
+      result = fetch_from_api(email)
+      write_cache(email, result)
       result
     end
 
     private
 
-    def fetch_from_api
-      client = ApiClient.instance
-      contact = client.find_contact(@email)
-
+    def fetch_from_api(email)
+      contact = @api_client.find_contact(email)
       return empty_membership unless contact
 
       contact_id = contact.dig("id")
@@ -37,8 +47,8 @@ module KajabiSso
 
       offer_ids =
         if customer_id.present?
-          purchase_ids = client.active_purchase_offer_ids(customer_id)
-          granted_ids = client.granted_offer_ids(contact_id)
+          purchase_ids = @api_client.active_purchase_offer_ids(customer_id)
+          granted_ids = @api_client.granted_offer_ids(contact_id)
           (purchase_ids + granted_ids).uniq
         else
           []
@@ -46,15 +56,13 @@ module KajabiSso
 
       Membership.new(contact_found: true, name: name, offer_ids: offer_ids)
     rescue UnauthorizedError => e
-      Rails.logger.warn("[KajabiSSO] Authentication failed: #{e.class} | #{mask_email(@email)}")
+      @logger.warn("[KajabiSSO] Authentication failed: #{e.class} | #{mask_email(email)}")
       raise
     rescue UnavailableError => e
-      Rails.logger.warn(
-        "[KajabiSSO] API unavailable: #{e.class} | #{mask_email(@email)} | #{e.message}",
-      )
+      @logger.warn("[KajabiSSO] API unavailable: #{e.class} | #{mask_email(email)} | #{e.message}")
       raise
     rescue ApiError => e
-      Rails.logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(@email)} | #{e.message}")
+      @logger.warn("[KajabiSSO] API error: #{e.class} | #{mask_email(email)} | #{e.message}")
       empty_membership
     end
 
@@ -62,9 +70,9 @@ module KajabiSso
       Membership.new(contact_found: false, name: nil, offer_ids: [])
     end
 
-    def read_cache
-      cached = Rails.cache.read(cache_key)
-      return cached unless cached
+    def read_cache(email)
+      cached = @cache.read(cache_key(email))
+      return nil unless cached
 
       Membership.new(
         contact_found: cached[:contact_found],
@@ -73,12 +81,12 @@ module KajabiSso
       )
     end
 
-    def write_cache(membership)
-      Rails.cache.write(cache_key, membership.cacheable, expires_in: MEMBERSHIP_CACHE_TTL)
+    def write_cache(email, membership)
+      @cache.write(cache_key(email), membership.cacheable, expires_in: MEMBERSHIP_CACHE_TTL)
     end
 
-    def cache_key
-      Infrastructure::CacheKeyBuilder.build("m", Digest::SHA256.hexdigest(@email))
+    def cache_key(email)
+      CacheKeyBuilder.build("m", Digest::SHA256.hexdigest(email))
     end
 
     def mask_email(email)

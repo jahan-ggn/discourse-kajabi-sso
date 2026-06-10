@@ -58,16 +58,16 @@ module KajabiSso
     end
 
     def valid_secret?
-      if SiteSetting.kajabi_webhook_secret.blank?
+      secret = SiteSetting.kajabi_webhook_secret
+
+      if secret.blank?
         Rails.logger.warn(
-          "[KajabiSSO] Webhook received but kajabi_webhook_secret is blank; accepting without verification.",
+          "[KajabiSSO] Webhook received but webhook_secret is blank; accepting without verification.",
         )
         return true
       end
-      ActiveSupport::SecurityUtils.secure_compare(
-        params[:secret].to_s,
-        SiteSetting.kajabi_webhook_secret,
-      )
+
+      ActiveSupport::SecurityUtils.secure_compare(params[:secret].to_s, secret)
     end
 
     def forbidden

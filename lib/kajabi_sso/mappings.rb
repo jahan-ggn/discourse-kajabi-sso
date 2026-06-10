@@ -18,22 +18,22 @@ module KajabiSso
         return [] if offer_ids.blank?
 
         mappings = mapping
-        Array(offer_ids).filter_map { |id| mappings[id.to_s]&.id }
+        Array(offer_ids).flat_map { |id| Array(mappings[id.to_s]).map(&:id) }.uniq
       end
 
       def group_names_for(offer_ids)
         return [] if offer_ids.blank?
 
         mappings = mapping
-        Array(offer_ids).filter_map { |id| mappings[id.to_s]&.name }
+        Array(offer_ids).flat_map { |id| Array(mappings[id.to_s]).map(&:name) }.uniq
       end
 
       def managed_group_ids
-        mapping.values.map(&:id).uniq
+        mapping.values.flatten(1).map(&:id).uniq
       end
 
       def managed_group_names
-        mapping.values.map(&:name).uniq
+        mapping.values.flatten(1).map(&:name).uniq
       end
 
       private
@@ -49,14 +49,20 @@ module KajabiSso
             entry = entry.strip
             next if entry.blank? || entry.start_with?("#")
 
-            offer_id, group_name = entry.split(":", 2).map(&:strip)
-            next if offer_id.blank? || group_name.blank?
+            offer_id, group_names_str = entry.split(":", 2).map(&:strip)
+            next if offer_id.blank? || group_names_str.blank?
 
-            entries << [offer_id, group_name]
+            group_names_str
+              .split(",")
+              .map(&:strip)
+              .each do |group_name|
+                next if group_name.blank?
+                entries << [offer_id, group_name]
+              end
           end
 
-        group_names = entries.map(&:last).uniq
-        groups_by_name = Group.where(name: group_names).index_by(&:name)
+        all_group_names = entries.map(&:last).uniq
+        groups_by_name = Group.where(name: all_group_names).index_by(&:name)
 
         mappings = {}
         entries.each do |offer_id, group_name|
@@ -65,8 +71,8 @@ module KajabiSso
             Rails.logger.warn("[KajabiSSO] Mapped group '#{group_name}' not found; skipping.")
             next
           end
-
-          mappings[offer_id] = group
+          mappings[offer_id] ||= []
+          mappings[offer_id] << group
         end
 
         mappings

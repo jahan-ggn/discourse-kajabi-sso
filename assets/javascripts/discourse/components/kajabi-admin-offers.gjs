@@ -34,11 +34,17 @@ export default class KajabiAdminOffers extends Component {
   }
 
   @action
-  copyToClipboard(text) {
-    navigator.clipboard.writeText(text);
-    this.toasts.success({
-      data: { message: i18n("discourse_kajabi_sso.admin.copied") },
-    });
+  async copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toasts.success({
+        data: { message: i18n("discourse_kajabi_sso.admin.copied") },
+      });
+    } catch {
+      this.toasts.error({
+        data: { message: "Unable to copy to clipboard" },
+      });
+    }
   }
 
   <template>

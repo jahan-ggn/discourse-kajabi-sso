@@ -8,7 +8,8 @@ module Jobs
       payload = args["payload"]
       return if payload.blank?
 
-      result = ::KajabiSso::WebhookProcessor.process(payload)
+      processor = KajabiSso::WebhookProcessor.new
+      result = processor.process(payload)
 
       unless result.success?
         Rails.logger.warn("[KajabiSSO] Async webhook processing failed: #{result.error}")
