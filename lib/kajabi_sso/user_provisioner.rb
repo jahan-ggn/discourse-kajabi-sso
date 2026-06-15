@@ -8,7 +8,7 @@ module KajabiSso
 
     def initialize(email, name: nil)
       @email = email
-      @name = name
+      @name = name.is_a?(Hash) ? name["name"] : name
     end
 
     def provision
