@@ -23,6 +23,10 @@ module KajabiSso
     end
 
     def access_token
+      if @client_id.blank? || @client_secret.blank?
+        raise KajabiSso::ApiError, "Kajabi credentials not configured"
+      end
+
       cached = @cache.read(cache_key)
       return cached if cached.present?
 
