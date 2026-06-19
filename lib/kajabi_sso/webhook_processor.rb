@@ -24,7 +24,7 @@ module KajabiSso
       return Result.new(success: false, error: "missing email") if email.blank?
       return Result.new(success: false, error: "missing offer_id") if offer_id.blank?
 
-      user = UserFinder.find_or_provision(email, name: name)
+      user = UserFinder.find_or_provision(email, name)
       unless user.persisted?
         return Result.new(success: false, error: user.errors.full_messages.join(", "))
       end
