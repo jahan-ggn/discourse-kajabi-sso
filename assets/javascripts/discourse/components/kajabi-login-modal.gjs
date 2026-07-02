@@ -39,6 +39,8 @@ export default class KajabiLoginModal extends Component {
     this.loading = true;
     this.errorMessage = null;
 
+    document.cookie = `destination_url=${window.location.pathname}; path=/; SameSite=Lax`;
+
     try {
       const result = await ajax("/u/email-login", {
         type: "POST",
