@@ -6,7 +6,7 @@ module KajabiSso
       User.real.find_by_email(email)
     end
 
-    def self.find_or_provision(email, name)
+    def self.find_or_provision(email, name = nil)
       find(email) || UserProvisioner.provision(email, name: name)
     end
   end
